@@ -2,7 +2,6 @@
 
 #!/usr/bin/env python3
 
-
 import asyncio
 import can
 import time
@@ -103,12 +102,8 @@ def receive_frame(bus, period, data_array):
 
     print(motor_id)
 
-    target = (
-        (recv_msg.data[0] << 24)
-        | (recv_msg.data[1] << 16)
-        | (recv_msg.data[2] << 8)
-        | (recv_msg.data[3])
-    )
+    target = ((recv_msg.data[0] << 24) | (recv_msg.data[1] << 16) |
+              (recv_msg.data[2] << 8) | (recv_msg.data[3]))
     target = struct.pack("<I", target)
     target = struct.unpack("<i", target)[0]
     data_array[motor_id] = target

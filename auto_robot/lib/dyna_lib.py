@@ -5,14 +5,13 @@ import os
 import struct
 from dynamixel_sdk import *  # Uses Dynamixel SDK library
 
-
 # ********* DYNAMIXEL Model definition *********
 # ***** (Use only one definition at a time) *****
 MY_DXL = "X_SERIES"  # X330 (5.0 V recommended), X430, X540, 2X430
 # MY_DXL = 'MX_SERIES'    # MX series with 2.0 firmware update.
 # MY_DXL = 'PRO_SERIES'   # H54, H42, M54, M42, L54, L42
-# MY_DXL = 'PRO_A_SERIES' # PRO series with (A) firmware update.
 # MY_DXL = 'P_SERIES'     # PH54, PH42, PM54
+# MY_DXL = 'PRO_A_SERIES' # PRO series with (A) firmware update.
 # MY_DXL = 'XL320'        # [WARNING] Operating Voltage : 7.4V
 
 # Control table address
@@ -26,6 +25,7 @@ if MY_DXL == "X_SERIES" or MY_DXL == "MX_SERIES":
     ADDR_GOAL_PWM = 100
     ADDR_CHANGE_MODE = 11
     ADDR_ID = 8
+    ADDR_PROFILE_VEL = 112
 
     DXL_MINIMUM_POSITION_VALUE = (
         0  # Refer to the Minimum Position Limit of product eManual
@@ -33,19 +33,17 @@ if MY_DXL == "X_SERIES" or MY_DXL == "MX_SERIES":
     DXL_MAXIMUM_POSITION_VALUE = (
         4095  # Refer to the Maximum Position Limit of product eManual
     )
-    BAUDRATE = 115200
+    BAUDRATE = 1000000
 
     LEN_GOAL_POSITION = 4
     LEN_GOAL_VELOCITY = 4
-
 
 elif MY_DXL == "PRO_SERIES":
     ADDR_TORQUE_ENABLE = 562  # Control table address is different in DYNAMIXEL model
     ADDR_GOAL_POSITION = 596
     ADDR_PRESENT_POSITION = 611
     DXL_MINIMUM_POSITION_VALUE = (
-        -150000
-    )  # Refer to the Minimum Position Limit of product eManual
+        -150000)  # Refer to the Minimum Position Limit of product eManual
     DXL_MAXIMUM_POSITION_VALUE = (
         150000  # Refer to the Maximum Position Limit of product eManual
     )
@@ -55,8 +53,7 @@ elif MY_DXL == "P_SERIES" or MY_DXL == "PRO_A_SERIES":
     ADDR_GOAL_POSITION = 564
     ADDR_PRESENT_POSITION = 580
     DXL_MINIMUM_POSITION_VALUE = (
-        -150000
-    )  # Refer to the Minimum Position Limit of product eManual
+        -150000)  # Refer to the Minimum Position Limit of product eManual
     DXL_MAXIMUM_POSITION_VALUE = (
         150000  # Refer to the Maximum Position Limit of product eManual
     )
@@ -68,6 +65,12 @@ elif MY_DXL == "XL320":
     DXL_MINIMUM_POSITION_VALUE = 0  # Refer to the CW Angle Limit of product eManual
     DXL_MAXIMUM_POSITION_VALUE = 1023  # Refer to the CCW Angle Limit of product eManual
     BAUDRATE = 1000000  # Default Baudrate of XL-320 is 1Mbps
+
+
+def from_uint32_to_int32(value):
+    if value > 0x7FFFFFFF:
+        value -= 0x100000000
+    return value
 
 
 def goal_to_4byte(goal):
@@ -129,9 +132,12 @@ class dxl_controller:
             dxl_controller.portHandler.openPort()
             dxl_controller.portHandler.setBaudRate(BAUDRATE)
 
+        self.initialize_pos = 0
+
         self.dxl_id = dxl_id
+        self.mode = mode
         self.set_torque(0)
-        self.set_mode(mode)
+        self.set_mode()
         self.set_torque(1)
 
     def set_torque(self, torque):
@@ -145,40 +151,54 @@ class dxl_controller:
             result,error
         """
         dxl_comm_result, dxl_error = dxl_controller.packetHandler.write1ByteTxRx(
-            dxl_controller.portHandler, self.dxl_id, ADDR_TORQUE_ENABLE, torque
-        )
+            dxl_controller.portHandler, self.dxl_id, ADDR_TORQUE_ENABLE, torque)
         return dxl_comm_result, dxl_error
 
-    def set_mode(self, dyna_mode):
-        """dyna_mode     value
+    def set_mode(self):
+        """mode     value
             vel         1
             pos         3
         extended pos    4
         """
 
+        # extended mode　初期化時の位置を保持
+        if self.mode == 4:
+            self.initialize_pos = self.read_pos()
+
         dxl_comm_result, dxl_error = dxl_controller.packetHandler.write1ByteTxRx(
-            dxl_controller.portHandler, self.dxl_id, ADDR_CHANGE_MODE, dyna_mode
-        )
+            dxl_controller.portHandler, self.dxl_id, ADDR_CHANGE_MODE,
+            self.mode)
         return dxl_comm_result, dxl_error
 
     def write_pos(self, goal_pos):
         # absolute goal_pos range is 0 ~ 4095
+        # extended goal_pos range long
+
+        # extended mode 目標値から初期化時の位置を引く
+        if self.mode == 4:
+            goal_pos = goal_pos + self.initialize_pos
+
         dxl_comm_result, dxl_error = dxl_controller.packetHandler.write4ByteTxRx(
-            dxl_controller.portHandler, self.dxl_id, ADDR_GOAL_POSITION, goal_pos
-        )
+            dxl_controller.portHandler, self.dxl_id, ADDR_GOAL_POSITION,
+            goal_pos)
         return dxl_comm_result, dxl_error
 
     def write_vel(self, goal_vel):
         # goal_vel range is 0~1023
         dxl_comm_result, dxl_error = dxl_controller.packetHandler.write4ByteTxRx(
-            dxl_controller.portHandler, self.dxl_id, ADDR_GOAL_VELOCITY, goal_vel
-        )
+            dxl_controller.portHandler, self.dxl_id, ADDR_GOAL_VELOCITY,
+            goal_vel)
+        return dxl_comm_result, dxl_error
+
+    def write_profile_vel(self, profile_vel):
+        dxl_comm_result, dxl_error = dxl_controller.packetHandler.write4ByteTxRx(
+            dxl_controller.portHandler, self.dxl_id, ADDR_PROFILE_VEL,
+            profile_vel)
         return dxl_comm_result, dxl_error
 
     def write_pos_p_gain(self, p_gain):
         dxl_comm_result, dxl_error = dxl_controller.packetHandler.write2ByteTxRx(
-            dxl_controller.portHandler, self.dxl_id, ADDR_POS_P_GAIN, p_gain
-        )
+            dxl_controller.portHandler, self.dxl_id, ADDR_POS_P_GAIN, p_gain)
         return dxl_comm_result, dxl_error
 
     def add_sync_param_pos(self, goal_pos):
@@ -204,24 +224,22 @@ class dxl_controller:
 
     def write_goal_pwm(self, goal_pwm):
         dxl_comm_result, dxl_error = dxl_controller.packetHandler.write2ByteTxRx(
-            dxl_controller.portHandler, self.dxl_id, ADDR_GOAL_PWM, goal_pwm
-        )
+            dxl_controller.portHandler, self.dxl_id, ADDR_GOAL_PWM, goal_pwm)
         return dxl_comm_result, dxl_error
 
     def read_pos(self):
         dxl_present_position, dxl_comm_result, dxl_error = (
             dxl_controller.packetHandler.read4ByteTxRx(
-                dxl_controller.portHandler, self.dxl_id, ADDR_PRESENT_POSITION
-            )
-        )
+                dxl_controller.portHandler, self.dxl_id, ADDR_PRESENT_POSITION))
+        dxl_present_position = from_uint32_to_int32(dxl_present_position)
         return dxl_present_position
 
     def read_vel(self):
         dxl_present_velocity, dxl_comm_result, dxl_error = (
             dxl_controller.packetHandler.read4ByteTxRx(
-                dxl_controller.portHandler, self.dxl_id, ADDR_PRESENT_VELOCITY
-            )
-        )
+                dxl_controller.portHandler, self.dxl_id, ADDR_PRESENT_VELOCITY))
+
+        dxl_present_velocity = from_uint32_to_int32(dxl_present_velocity)
         return dxl_present_velocity
 
     def close_port(self):

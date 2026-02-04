@@ -11,14 +11,15 @@ import math
 
 
 class RvizSplineFollower(Node):
+
     def __init__(self):
         super().__init__("rviz_spline_follower")
 
         self.points = []
 
-        self.point_sub = self.create_subscription(
-            PointStamped, "/clicked_point", self.point_callback, 10
-        )
+        self.point_sub = self.create_subscription(PointStamped,
+                                                  "/clicked_point",
+                                                  self.point_callback, 10)
 
         self.path_pub = self.create_publisher(Path, "/visual_spline_path", 10)
 

@@ -1,4 +1,4 @@
-"""twistをpublishする
+"""
 dynamixelのフィードバックデータをsubscribeして、odomをpublishする
 tfを出力する
 """
@@ -16,26 +16,20 @@ from nav_msgs.msg import Odometry
 from my_robot_interfaces.msg import DynaFeedback
 
 
-class odom_publisher(Node):
+def calc_frame_height(dis_cm):
+    return int((360 / (45 * math.pi) / 0.088) * (dis_cm))
+
+
+class OdomPublisher(Node):
+
     def __init__(self):
         super().__init__("odom_publisher")
-        self.subscription_joy = self.create_subscription(
-            Joy,  # メッセージの型
-            "/joy",  # 購読するトピック名
-            self.joy_callback,  # 呼び出すコールバック関数
-            10,
-        )
-        self.subscription_joy
-
         self.subscription_dyna = self.create_subscription(
-            DynaFeedback, "/feedback", self.feedback_callback, 10
-        )
+            DynaFeedback, "/feedback", self.feedback_callback, 10)
         self.subscription_dyna
 
         # publisherの設定
         self.odom_publisher_ = self.create_publisher(Odometry, "odom", 10)
-        self.twist_publisher = self.create_publisher(Twist, "/cmd_vel_joy", 10)
-
         self.tf_broadcaster_ = TransformBroadcaster(self)
 
         # robot parameter
@@ -49,25 +43,11 @@ class odom_publisher(Node):
         self.last_time = self.get_clock().now()
 
         # timer callback の周期設定
-        self.dt = 0.01  # [seconds]
+        self.dt = 0.01  # [seconds] [100hz]
         self.timer = self.create_timer(self.dt, self.publish_odometry)
 
         self.V_r = 0.0
         self.V_l = 0.0
-
-    def joy_callback(self, msg):
-
-        axes_values = msg.axes
-        buttons_values = msg.buttons
-
-        straight = axes_values[1] * 0.2
-        w = axes_values[0] * 0.5
-
-        twist = Twist()
-        twist.linear.x = straight
-        twist.angular.z = w
-
-        self.twist_publisher.publish(twist)
 
     def feedback_callback(self, msg):
         self.V_r = -msg.data[0]
@@ -81,22 +61,15 @@ class odom_publisher(Node):
         df_actual = (current_time - self.last_time).nanoseconds / 1e9
 
         # x,y,thetaの算出
-
         v = (self.V_r + self.V_l) / 2.0
         omega = (self.V_r - self.V_l) / self.track_width
-
         dt_theta = omega * df_actual
-
         delta_x = v * df_actual * math.cos(self.theta + (dt_theta / 2))
         delta_y = v * df_actual * math.sin(self.theta + (dt_theta / 2))
-
         self.x += delta_x
         self.y += delta_y
-
         self.theta += dt_theta
-
         self.theta = math.atan2(math.sin(self.theta), math.cos(self.theta))
-
         # print('theta',self.theta)
         # print('x',self.x)
         # print('y',self.y)
@@ -113,21 +86,18 @@ class odom_publisher(Node):
         odom.pose.pose.position.z = 0.0
 
         # クォータニオンへの変換
-
         qx = 0.0
         qy = 0.0
         qz = math.sin(self.theta / 2.0)
         qw = math.cos(self.theta / 2.0)
 
+        # odomをパブリッシュ
         odom.pose.pose.orientation.x = qx
         odom.pose.pose.orientation.y = qy
         odom.pose.pose.orientation.z = qz
         odom.pose.pose.orientation.w = qw
-
         odom.twist.twist.linear.x = float(v)
         odom.twist.twist.angular.z = float(omega)
-        # odomをパブリッシュ
-
         self.odom_publisher_.publish(odom)
 
         t = TransformStamped()
@@ -152,7 +122,7 @@ class odom_publisher(Node):
 def main():
     rclpy.init()  # rclpyライブラリの初期化
 
-    odom_publisher_node = odom_publisher()
+    odom_publisher_node = OdomPublisher()
 
     rclpy.spin(odom_publisher_node)  # ノードをスピンさせる
     odom_publisher_node.destroy_node()  # ノードを停止する
