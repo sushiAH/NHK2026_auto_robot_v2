@@ -15,7 +15,7 @@ def generate_launch_description():
     # setting node
     node1 = Node(
         package="auto_robot",  # package_name
-        executable="control_over_steps_node",  # node_name
+        executable="control_over_steps_action_node",  # node_name
         output="screen",
     )
 
@@ -26,13 +26,14 @@ def generate_launch_description():
 
     node3 = Node(
         package="auto_robot",
-        executable="twist_subscriber_auto_node",
+        executable="subscribe_twist_node",
     )
 
-    node4 = Node(
-        package="ah_ros2_dynamixel",
-        executable="dyna_handler",
-    )
+    node4 = Node(package="ah_ros2_dynamixel",
+                 executable="dyna_handler_node",
+                 parameters=[{
+                     "port_name": "/dev/ttyUSB1"
+                 }])
 
     ld.add_action(node4)
     ld.add_action(node2)

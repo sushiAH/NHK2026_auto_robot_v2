@@ -115,80 +115,71 @@ def generate_launch_description():
     )
 
     lidar_launch_file_dir = os.path.join(
-        get_package_share_directory("sllidar_ros2"), "launch"
-    )
+        get_package_share_directory("sllidar_ros2"), "launch")
 
-    lidar_s2_launch_file_path = os.path.join(
-        lidar_launch_file_dir, "sllidar_s2_launch.py"
-    )
+    lidar_s2_launch_file_path = os.path.join(lidar_launch_file_dir,
+                                             "sllidar_s2_launch.py")
 
-    lidar_a3_launch_file_path = os.path.join(
-        lidar_launch_file_dir, "sllidar_a3_launch.py"
-    )
+    lidar_a3_launch_file_path = os.path.join(lidar_launch_file_dir,
+                                             "sllidar_a3_launch.py")
 
     # --- RPLIDAR S2 の設定 ---
-    lidar_s2_setup_include = GroupAction(
-        actions=[
-            # 1. 名前空間を設定（これでトピックが /lidar_s2/scan になります）
-            PushRosNamespace("lidar_s2"),
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(lidar_s2_launch_file_path),
-                launch_arguments={
-                    "serial_port": "/dev/ttyUSB1",
-                    "serial_baudrate": "1000000",  # S2の標準
-                    "frame_id": "laser_s2",
-                    "scan_mode": "",  # 10Hz(同期用)
-                    "inverted": "false",
-                }.items(),
-            ),
-        ]
-    )
+    lidar_s2_setup_include = GroupAction(actions=[
+        # 1. 名前空間を設定（これでトピックが /lidar_s2/scan になります）
+        PushRosNamespace("lidar_s2"),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(lidar_s2_launch_file_path),
+            launch_arguments={
+                "serial_port": "/dev/ttyUSB1",
+                "serial_baudrate": "1000000",  # S2の標準
+                "frame_id": "laser_s2",
+                "scan_mode": "",  # 10Hz(同期用)
+                "inverted": "false",
+            }.items(),
+        ),
+    ])
 
     # --- RPLIDAR A3 の設定 ---
-    lidar_a3_setup_include = GroupAction(
-        actions=[
-            # 2. 名前空間を設定（これでトピックが /lidar_a3/scan になります）
-            PushRosNamespace("lidar_a3"),
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(lidar_a3_launch_file_path),
-                launch_arguments={
-                    "serial_port": "/dev/ttyUSB0",
-                    "serial_baudrate": "256000",  # A3の標準
-                    "frame_id": "laser_a3",
-                    "scan_mode": "Sensitivity",  # 10Hz(同期用)
-                    "inverted": "false",
-                }.items(),
-            ),
-        ]
-    )
+    lidar_a3_setup_include = GroupAction(actions=[
+        # 2. 名前空間を設定（これでトピックが /lidar_a3/scan になります）
+        PushRosNamespace("lidar_a3"),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(lidar_a3_launch_file_path),
+            launch_arguments={
+                "serial_port": "/dev/ttyUSB0",
+                "serial_baudrate": "256000",  # A3の標準
+                "frame_id": "laser_a3",
+                "scan_mode": "Sensitivity",  # 10Hz(同期用)
+                "inverted": "false",
+            }.items(),
+        ),
+    ])
 
     # lidar統合node
     scan_merger_node = Node(
         package="ros2_laser_scan_merger",
         executable="ros2_laser_scan_merger",
         name="laser_scan_merger",
-        parameters=[
-            {
-                "pointCloudTopic": "merged_cloud",
-                "pointCloutFrameId": "base_link",
-                "scanTopic1": "/lidar_s2/scan",
-                "scanTopic2": "/lidar_a3/scan",
-                "show1": True,
-                "show2": True,
-                "laser1Alpha": -90.0,
-                "laser1XOff": 0.0,
-                "laser1YOff": 0.125,
-                "laser1ZOff": 0.0,
-                "laser2Alpha": 90.0,
-                "laser2XOff": 0.0,
-                "laser2YOff": -0.125,
-                "laser2ZOff": 0.0,
-                "laser1AngleMax": 180.0,
-                "laser1AngleMin": -180.0,
-                "laser2AngleMax": 180.0,
-                "laser2AngleMin": -180.0,
-            }
-        ],
+        parameters=[{
+            "pointCloudTopic": "merged_cloud",
+            "pointCloutFrameId": "base_link",
+            "scanTopic1": "/lidar_s2/scan",
+            "scanTopic2": "/lidar_a3/scan",
+            "show1": True,
+            "show2": True,
+            "laser1Alpha": -90.0,
+            "laser1XOff": 0.0,
+            "laser1YOff": 0.125,
+            "laser1ZOff": 0.0,
+            "laser2Alpha": 90.0,
+            "laser2XOff": 0.0,
+            "laser2YOff": -0.125,
+            "laser2ZOff": 0.0,
+            "laser1AngleMax": 180.0,
+            "laser1AngleMin": -180.0,
+            "laser2AngleMax": 180.0,
+            "laser2AngleMin": -180.0,
+        }],
     )
 
     # pointCloud -> scan
@@ -196,21 +187,19 @@ def generate_launch_description():
         package="pointcloud_to_laserscan",
         executable="pointcloud_to_laserscan_node",
         name="pointcloud_to_laserscan",
-        parameters=[
-            {
-                "target_frame": "base_link",
-                "transform_tolerance": 0.01,
-                "min_height": -1.0,
-                "max_height": 1.0,
-                "angle_min": -3.14159,
-                "angle_max": 3.14159,
-                "angle_increment": 0.0043,  # 約0.25度（LiDARの性能に合わせる）
-                "scan_time": 0.1,
-                "range_min": 0.2,
-                "range_max": 30.0,
-                "use_inf": True,
-            }
-        ],
+        parameters=[{
+            "target_frame": "base_link",
+            "transform_tolerance": 0.01,
+            "min_height": -1.0,
+            "max_height": 1.0,
+            "angle_min": -3.14159,
+            "angle_max": 3.14159,
+            "angle_increment": 0.0043,  # 約0.25度（LiDARの性能に合わせる）
+            "scan_time": 0.1,
+            "range_min": 0.2,
+            "range_max": 30.0,
+            "use_inf": True,
+        }],
         remappings=[
             ("cloud_in", "/merged_cloud"),  # Mergerの出力を入れる
             ("scan", "/scan_merged_raw"),  # フィルタ前のスキャンとして出力
@@ -222,9 +211,14 @@ def generate_launch_description():
     filter_node = Node(
         package="laser_filters",
         executable="scan_to_scan_filter_chain",
-        parameters=[filter_params, {"qos_overrides./scan.reliability": "best_effort"}],
+        parameters=[
+            filter_params, {
+                "qos_overrides./scan.reliability": "best_effort"
+            }
+        ],
         output="screen",
-        remappings=[("scan", "/scan_merged_raw"), ("scan_filtered", "/scan_filtered")],
+        remappings=[("scan", "/scan_merged_raw"),
+                    ("scan_filtered", "/scan_filtered")],
         #                 入力                         出力
     )
 
@@ -234,8 +228,7 @@ def generate_launch_description():
     # ---------------------------------------------------------
     localization_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(nav2_bringup_dir, "launch", "localization_launch.py")
-        ),
+            os.path.join(nav2_bringup_dir, "launch", "localization_launch.py")),
         launch_arguments={
             "map": map_file_path,  # 地図パスを渡す
             "params_file": nav2_params_path,  # 設定ファイルを渡す
@@ -251,8 +244,7 @@ def generate_launch_description():
     # ---------------------------------------------------------
     navigation_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(nav2_bringup_dir, "launch", "navigation_launch.py")
-        ),
+            os.path.join(nav2_bringup_dir, "launch", "navigation_launch.py")),
         launch_arguments={
             "params_file": nav2_params_path,
             "use_sim_time": "False",

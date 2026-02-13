@@ -64,7 +64,9 @@ def generate_launch_description():
         package="tf2_ros",
         executable="static_transform_publisher",
         output="screen",
-        arguments=["-0.3", "0.0", "0.0", "3.14", "0.0", "0.0", "base_link", "laser"],
+        arguments=[
+            "-0.3", "0.0", "0.0", "3.14", "0.0", "0.0", "base_link", "laser"
+        ],
     )
 
     static_transform_publisher_footprint_node = Node(
@@ -85,23 +87,20 @@ def generate_launch_description():
 
     # lidar
     lidar_launch_file_dir = os.path.join(
-        get_package_share_directory("sllidar_ros2"), "launch"
-    )
+        get_package_share_directory("sllidar_ros2"), "launch")
 
-    lidar_launch_file_path = os.path.join(lidar_launch_file_dir, "sllidar_s2_launch.py")
+    lidar_launch_file_path = os.path.join(lidar_launch_file_dir,
+                                          "sllidar_s2_launch.py")
 
     lidar_setup_include = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(lidar_launch_file_path),
-    )
+        PythonLaunchDescriptionSource(lidar_launch_file_path),)
 
     # nav2_launch_file
     nav2_launch_file_dir = os.path.join(
-        get_package_share_directory("nav2_bringup"), "launch"
-    )
+        get_package_share_directory("nav2_bringup"), "launch")
 
-    nav2_nav_launch_file_path = os.path.join(
-        nav2_launch_file_dir, "navigation_launch.py"
-    )
+    nav2_nav_launch_file_path = os.path.join(nav2_launch_file_dir,
+                                             "navigation_launch.py")
 
     nav2_nav_setup_include = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(nav2_nav_launch_file_path),
@@ -113,11 +112,11 @@ def generate_launch_description():
         }.items(),
     )
 
-    nav2_rviz2_launch_file_path = os.path.join(nav2_launch_file_dir, "rviz_launch.py")
+    nav2_rviz2_launch_file_path = os.path.join(nav2_launch_file_dir,
+                                               "rviz_launch.py")
 
     nav2_rviz2_setup_include = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(nav2_rviz2_launch_file_path),
-    )
+        PythonLaunchDescriptionSource(nav2_rviz2_launch_file_path),)
 
     ld.add_action(node1)
     ld.add_action(node2)

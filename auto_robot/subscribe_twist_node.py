@@ -6,8 +6,6 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 from sensor_msgs.msg import Joy
-from auto_robot.lib.dyna_lib import dxl_controller
-from auto_robot.lib.ah_python_can import *
 import math
 import numpy as np
 from geometry_msgs.msg import TransformStamped, Twist
@@ -15,11 +13,7 @@ from tf2_ros import TransformBroadcaster
 from nav_msgs.msg import Odometry
 import atexit
 
-from my_robot_interfaces.msg import DynaFeedback, DynaTarget
-
-
-def calc_frame_height(dis_cm):
-    return int((360 / (45 * math.pi) / 0.088) * (dis_cm))
+from auto_robot_interfaces.msg import DynaFeedback, DynaTarget
 
 
 class TwistSubscriber(Node):

@@ -39,12 +39,17 @@ from sensor_msgs.msg import Joy
 from geometry_msgs.msg import TransformStamped, Twist
 from tf2_ros import TransformBroadcaster
 from nav_msgs.msg import Odometry
-from my_robot_interfaces.msg import DynaFeedback
 import atexit
 
-#自作系
-from my_robot_interfaces.msg import DynaFeedback, DynaTarget
-from auto_robot.lib.ah_python_can import *
+#自作ライブラリ
+from auto_robot_interfaces.msg import DynaFeedback, DynaTarget
+from auto_robot_interfaces.action import OverSteps
+import os
+import sys
+
+target_dir = os.path.abspath("/home/aratahorie/ah_python_libraries")
+sys.path.append(target_dir)
+from ah_python_can import *
 
 #initialize_can_bus
 CAN_BUS = can.interface.Bus(bustype="socketcan",

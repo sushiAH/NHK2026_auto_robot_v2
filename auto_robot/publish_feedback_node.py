@@ -1,4 +1,4 @@
-"""IMU,計測輪から取得したデータをpublishする"""
+"""IMU,tofセンサ2つをpublishする"""
 
 import rclpy
 from rclpy.node import Node
@@ -11,9 +11,15 @@ from std_msgs.msg import String, UInt16
 from sensor_msgs.msg import Joy, Imu
 from geometry_msgs.msg import TransformStamped, Twist, Quaternion
 from nav_msgs.msg import Odometry
+import tf_transformations
 
-# 自作ライブラリ
-from auto_robot.lib.recv_feedback import *
+#自作ライブラリ
+import os
+import sys
+
+target_dir = os.path.abspath("/home/aratahorie/ah_python_libraries")
+sys.path.append(target_dir)
+from recv_feedback import *
 
 
 def calc_delta_odometry(x_vel, y_vel, theta, ang_z_vel, dt):
@@ -34,11 +40,13 @@ class feedback_publisher(Node):
         self.declare_parameter("odom_frame_id", "odom")
         self.declare_parameter("base_frame_id", "base_link")
         self.declare_parameter("wheel_radius", 0.1)
+        self.declare_parameter("port_name", "/dev/ttyACM0")
 
         self.imu_frame_id = self.get_parameter("imu_frame_id").value
         self.odom_frame_id = self.get_parameter("odom_frame_id").value
         self.base_frame_id = self.get_parameter("base_frame_id").value
         self.wheel_radius = self.get_parameter("wheel_radius").value
+        port_name = self.get_parameter("port_name").value
 
         # --- publisherの設定 ---
         self.imu_pub = self.create_publisher(Imu, "imu/data", 10)
@@ -52,9 +60,7 @@ class feedback_publisher(Node):
         self.publish_timer = self.create_timer(0.005, self.publish_feedback)
 
         # esp32 serialの設定
-        self.ser = serial.Serial(port="/dev/ttyACM1",
-                                 baudrate=10000000,
-                                 timeout=0.0)
+        self.ser = serial.Serial(port=port_name, baudrate=10000000, timeout=0.0)
         # メンバ変数初期化
         self.mcu_timestamp_millis = 0
 

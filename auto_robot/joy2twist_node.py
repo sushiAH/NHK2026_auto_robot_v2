@@ -11,7 +11,7 @@ from geometry_msgs.msg import TransformStamped, Twist
 from tf2_ros import TransformBroadcaster
 from nav_msgs.msg import Odometry
 
-from my_robot_interfaces.msg import DynaFeedback
+from auto_robot_interfaces.msg import DynaFeedback
 
 
 class Joy2Twist(Node):

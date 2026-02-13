@@ -9,9 +9,10 @@ import math
 import numpy as np
 import time
 
-from my_robot_interfaces.msg import DynaFeedback, DynaTarget
 from std_msgs.msg import UInt8, String
 from rclpy.node import Node
+
+from auto_robot_interfaces.msg import DynaFeedback, DynaTarget
 
 
 class BoxArmController(Node):

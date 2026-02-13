@@ -28,13 +28,14 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "twist_subscriber_auto_node = auto_robot.subscribe_twist_auto_node:main",
-            "odom_publisher_node = auto_robot.publish_odom_node:main",
+            "subscribe_twist_node = auto_robot.subscribe_twist_node:main",
+            "publish_odom_node = auto_robot.publish_odom_node:main",
             "follow_spline_node = auto_robot.follow_spline_node:main",
             "joy2twist_node = auto_robot.joy2twist_node:main",
             "control_box_arm_node = auto_robot.control_box_arm_node:main",
             "control_over_steps_node = auto_robot.control_over_steps_node:main",
             "publish_feedback_node = auto_robot.publish_feedback_node:main",
+            "control_over_steps_action_node = auto_robot.control_over_steps_action_node:main",
         ],
     },
 )
