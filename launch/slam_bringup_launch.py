@@ -1,15 +1,3 @@
-"""odom_publisher
-twist_subscriber
-joy_linux
-rviz2
-slam_toolbox
-static tf lidar
-static tf footprint
-laser filter
-scan Merger
-pc to scan
-"""
-
 import os
 
 from ament_index_python.packages import get_package_share_directory
@@ -21,6 +9,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
+
     ld = LaunchDescription()
 
     package_dir = get_package_share_directory("auto_robot")
@@ -28,36 +17,49 @@ def generate_launch_description():
     # SLAM用パラメータ
     slam_params = os.path.join(package_dir, "config", "slam_params.yaml")
 
-    slam_package_dir = get_package_share_directory("slam_toolbox")
-    print(slam_params)
+    ekf_config_file_path = os.path.join(
+        get_package_share_directory("auto_robot"), "config", "ekf.yaml")
 
     # laser_filter用パラメータ
-    filter_params = os.path.join(package_dir, "config", "laser_filter.yaml")
+    laser_filter_params = os.path.join(package_dir, "config",
+                                       "laser_filter.yaml")
 
     # ノード定義
-    node1 = Node(
-        package="auto_minicar",  # package_name
-        executable="odom_publisher",  # node_name
-        output="screen",
+
+    pub_odom_node = Node(
+        package="auto_robot",  # package_name
+        executable="publish_odom_node",  # node_name
     )
 
-    node2 = Node(
-        package="auto_minicar",
-        executable="twist_subscriber",
+    sub_twist_node = Node(
+        package="auto_robot",
+        executable="subscribe_twist_node",
     )
 
-    node3 = Node(
-        package="joy_linux",
-        executable="joy_linux_node",
+    pub_feedback_node = Node(
+        package="auto_robot",
+        executable="publish_feedback_node",
     )
 
-    node4 = Node(
+    joy2twist_node = Node(
+        package="auto_robot",
+        executable="joy2twist_node",
+    )
+
+    ekf_node = Node(
+        package="robot_localization",
+        executable="ekf_node",
+        name="ekf_filter_node",
+        parameters=[ekf_config_file_path],
+    )
+
+    rviz2 = Node(
         package="rviz2",
         executable="rviz2",
         name="rviz2",
     )
 
-    node5 = Node(
+    slam_tool_box = Node(
         package="slam_toolbox",
         executable="async_slam_toolbox_node",
         name="slam_toolbox",
@@ -116,6 +118,20 @@ def generate_launch_description():
             "base_footprint",
         ],
     )
+
+    static_transform_publisher_imu_node = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        arguments=[
+            "0.0",
+            "0.0",
+            "0.0",
+            "0.0",
+            "0.0",
+            "0.0",
+            "base_link",
+            "imu_link",
+        ])
 
     lidar_launch_file_dir = os.path.join(
         get_package_share_directory("sllidar_ros2"), "launch")
@@ -211,11 +227,11 @@ def generate_launch_description():
 
     # laser filter node
     # #Lidar(/scan) -> Filter ->/scan_filtered
-    filter_node = Node(
+    laser_filter_node = Node(
         package="laser_filters",
         executable="scan_to_scan_filter_chain",
         parameters=[
-            filter_params, {
+            laser_filter_params, {
                 "qos_overrides./scan.reliability": "best_effort"
             }
         ],
@@ -225,24 +241,23 @@ def generate_launch_description():
         #                 入力                         出力
     )
 
-    ld.add_action(node1)
-    ld.add_action(node2)
-    ld.add_action(node3)
-    ld.add_action(node4)
-    ld.add_action(node5)
-
-    ld.add_action(filter_node)
+    ld.add_action(sub_twist_node)
+    ld.add_action(pub_odom_node)
+    ld.add_action(pub_feedback_node)
+    ld.add_action(joy2twist_node)
+    ld.add_action(rviz2)
+    ld.add_action(ekf_node)
+    ld.add_action(slam_tool_box)
 
     ld.add_action(static_tf_s2)
     ld.add_action(static_tf_a3)
-
+    ld.add_action(static_transform_publisher_imu_node)
     ld.add_action(static_transform_publisher_footprint_node)
 
     ld.add_action(lidar_s2_setup_include)
     ld.add_action(lidar_a3_setup_include)
-
     ld.add_action(scan_merger_node)
-
     ld.add_action(pc_to_scan_node)
+    ld.add_action(laser_filter_node)
 
     return ld

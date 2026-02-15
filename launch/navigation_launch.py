@@ -22,46 +22,54 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 def generate_launch_description():
     ld = LaunchDescription()
 
-    package_dir = get_package_share_directory("auto_minicar")
+    package_dir = get_package_share_directory("auto_robot")
 
-    map_file_path = "/home/aratahorie/auto_minicar/src/auto_minicar/map/map_tamoku.yaml"
+    map_file_path = "/home/aratahorie/auto_robot/src/auto_robot/map/map_tamoku.yaml"
 
     # 2. Nav2の設定ファイル
     nav2_params_path = (
-        "/home/aratahorie/auto_minicar/src/auto_minicar/config/nav2_params.yaml"
-    )
+        "/home/aratahorie/auto_robot/src/auto_robot/config/nav2_params.yaml")
+
+    ekf_config_file_path = os.path.join(
+        get_package_share_directory("auto_robot"), "config", "ekf.yaml")
 
     rviz_config_path = os.path.join(package_dir, "rviz", "navigation_rviz.rviz")
 
     # laser_filter用パラメータ
     filter_params = os.path.join(package_dir, "config", "laser_filter.yaml")
 
-    # Nav2の起動ファイルディレクトリを取得
-    nav2_bringup_dir = get_package_share_directory("nav2_bringup")
-
     # ノード定義
-    node1 = Node(
-        package="auto_minicar",  # package_name
-        executable="odom_publisher",  # node_name
-        output="screen",
+    pub_odom_node = Node(
+        package="auto_robot",  # package_name
+        executable="publish_odom_node",  # node_name
     )
 
-    node2 = Node(
-        package="auto_minicar",
-        executable="twist_subscriber",
+    sub_twist_node = Node(
+        package="auto_robot",
+        executable="subscribe_twist_node",
     )
 
-    node3 = Node(
-        package="joy_linux",
-        executable="joy_linux_node",
+    pub_feedback_node = Node(
+        package="auto_robot",
+        executable="publish_feedback_node",
     )
 
-    node4 = Node(
-        package="rviz2",
-        executable="rviz2",
-        name="rviz2",
-        arguments=["-d", rviz_config_path],
+    joy2twist_node = Node(
+        package="auto_robot",
+        executable="joy2twist_node",
     )
+
+    ekf_node = Node(
+        package="robot_localization",
+        executable="ekf_node",
+        name="ekf_filter_node",
+        parameters=[ekf_config_file_path],
+    )
+
+    rviz2 = Node(package="rviz2",
+                 executable="rviz2",
+                 name="rviz2",
+                 parameters=[rviz_config_path]),
 
     # 静的tfの配信
     # base_link -> laser
@@ -113,6 +121,20 @@ def generate_launch_description():
             "base_footprint",
         ],
     )
+
+    static_transform_publisher_imu_node = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        arguments=[
+            "0.0",
+            "0.0",
+            "0.0",
+            "0.0",
+            "0.0",
+            "0.0",
+            "base_link",
+            "imu_link",
+        ])
 
     lidar_launch_file_dir = os.path.join(
         get_package_share_directory("sllidar_ros2"), "launch")
@@ -208,7 +230,7 @@ def generate_launch_description():
 
     # laser filter node
     # #Lidar(/scan) -> Filter ->/scan_filtered
-    filter_node = Node(
+    laser_filter_node = Node(
         package="laser_filters",
         executable="scan_to_scan_filter_chain",
         parameters=[
@@ -222,57 +244,62 @@ def generate_launch_description():
         #                 入力                         出力
     )
 
-    # ---------------------------------------------------------
-    # 2. 地図と自己位置推定 (Localization) の起動
-    # map_server と amcl をここで起動します
-    # ---------------------------------------------------------
-    localization_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(nav2_bringup_dir, "launch", "localization_launch.py")),
-        launch_arguments={
-            "map": map_file_path,  # 地図パスを渡す
-            "params_file": nav2_params_path,  # 設定ファイルを渡す
-            "use_sim_time": "False",
-            "autostart": "True",  # 自動でActiveにする
-            "use_lifecycle_mgr": "True",  # 専用の管理人が立ち上がる
-        }.items(),
+    # controller server
+    controller_server_node = Node(
+        package="nav2_controller",
+        executable="controller_server",
+        output="screen",
+        parameters=[nav2_params_path],
     )
 
-    # ---------------------------------------------------------
-    # 3. ナビゲーション (Navigation) の起動
-    # controller, planner, behavior server などを起動します
-    # ---------------------------------------------------------
-    navigation_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(nav2_bringup_dir, "launch", "navigation_launch.py")),
-        launch_arguments={
-            "params_file": nav2_params_path,
-            "use_sim_time": "False",
-            "autostart": "True",
-            "use_lifecycle_mgr": "True",
-        }.items(),
+    # map server node
+    map_server_node = Node(
+        package="nav2_map_server",
+        executable="map_server",
+        name="map_server",
+        parameters=[{
+            "yaml_filename": map_file_path
+        }],
     )
 
-    ld.add_action(node1)
-    ld.add_action(node2)
-    ld.add_action(node3)
-    ld.add_action(node4)
+    # amcl
+    amcl_node = Node(package="nav2_amcl",
+                     executable="amcl",
+                     parameters=[nav2_params_path])
 
-    ld.add_action(filter_node)
+    # life cycle node
+    lifecycle_manager_node = Node(
+        package="nav2_lifecycle_manager",
+        executable="lifecycle_manager",
+        name="lifecycle_manager_control",
+        output="screen",
+        parameters=[{
+            "autostart": True,
+            "node_names": ["controller_server", "amcl", "map_server"],
+        }],
+    )
+
+    ld.add_action(sub_twist_node)
+    ld.add_action(pub_odom_node)
+    ld.add_action(pub_feedback_node)
+    ld.add_action(joy2twist_node)
+    ld.add_action(rviz2)
+    ld.add_action(ekf_node)
+
+    ld.add_action(amcl_node)
+    ld.add_action(map_server_node)
+    ld.add_action(controller_server_node)
+    ld.add_action(lifecycle_manager_node)
 
     ld.add_action(static_tf_s2)
     ld.add_action(static_tf_a3)
-
+    ld.add_action(static_transform_publisher_imu_node)
     ld.add_action(static_transform_publisher_footprint_node)
 
     ld.add_action(lidar_s2_setup_include)
     ld.add_action(lidar_a3_setup_include)
-
     ld.add_action(scan_merger_node)
-
     ld.add_action(pc_to_scan_node)
-
-    ld.add_action(localization_launch)
-    ld.add_action(navigation_launch)
+    ld.add_action(laser_filter_node)
 
     return ld
