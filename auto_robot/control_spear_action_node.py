@@ -35,11 +35,12 @@ class SpearController(Node):
     def __init__(self):
         super().__init__("spear_controller")
 
-        self._action_server = ActionServer(self,
-                                           Spear,
-                                           "spear",
-                                           self.execute_callback,
-                                           cancel_callback=self.cancel_callback)
+        self._action_server = ActionServer(
+            self,
+            Spear,
+            "spear",
+            self.execute_callback,
+        )
 
         # publisherの設定
         self.dyna_pos_publisher = self.create_publisher(DynaTarget,
@@ -74,8 +75,8 @@ class SpearController(Node):
 
 
 def main():
-    node = SpearController()
     rclpy.init()
+    node = SpearController()
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(node)
     executor.spin()

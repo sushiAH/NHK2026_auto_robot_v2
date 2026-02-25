@@ -38,6 +38,8 @@ setup(
             "control_spear_action_node = auto_robot.control_spear_action_node:main",
             "correcting_pos_on_step_action_node = auto_robot.correcting_pos_on_step_action_node:main",
             "switch_localization_action_node = auto_robot.switch_localization_action_node:main",
+            "move_on_steps_action_node = auto_robot.move_on_steps_action_node:main",
+            "robot_client_node = auto_robot.robot_client_node:main",
         ],
     },
 )

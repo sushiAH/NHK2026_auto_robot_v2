@@ -2,23 +2,29 @@ import rclpy
 import math
 from rclpy.node import Node
 from rclpy.action import ActionServer
+from rclpy.callback_groups import ReentrantCallbackGroup
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from lifecycle_msgs.srv import ChangeState
 from lifecycle_msgs.msg import Transition
-from auto_robot_msgs.action import SwitchLoc
+from auto_robot_interfaces.action import SwitchLoc
 
 
 class LocalizationManager(Node):
 
     def __init__(self):
         super().__init__("localization_manager")
+        self.cb_group = ReentrantCallbackGroup()
 
-        self.__action_server = ActionServer(self, SwitchLoc,
-                                            "switch_localization",
-                                            self.execute_callback)
+        self._action_server = ActionServer(
+            self,
+            SwitchLoc,
+            "switch_localization",
+            self.execute_callback,
+            callback_group=self.cb_group,
+        )
 
         self.initial_pose_pub = self.create_publisher(PoseWithCovarianceStamped,
-                                                      "/initialpose", 10)
+                                                      "/set_pose", 10)
 
         self.amcl_lifecycle_client = self.create_client(ChangeState,
                                                         "/amcl/change_state")
@@ -26,18 +32,20 @@ class LocalizationManager(Node):
     async def execute_callback(self, goal_handle):
         req = goal_handle.request
         res = SwitchLoc.Result()
+        success = False
+        message = ""
 
         #ekf単体
         if req.mode == 0:
-            success, message = self.deactivate_lidar_localization()
+            success = await self.deactivate_lidar_localization()
 
         #ekf + lidar
         elif req.mode == 1:
-            success, message = self.activate_lidar_localization(
+            success, message = await self.activate_lidar_localization(
                 req.x, req.y, req.yaw)
 
         res.success = success
-        res.message = message
+        res.success = message
 
         if success:
             goal_handle.succeed()
@@ -100,3 +108,12 @@ def main():
     executor.add_node(node)
     executor.spin()
     rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()
+"""ROS2 lifecycle nodeについて
+serviceのserverとして実装されている
+/node名/change_state
+に対して、active deactiveなどの状態を送ればよい
+立ち上げはLifecycleManagerで立ち上げる"""

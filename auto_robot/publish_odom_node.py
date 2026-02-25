@@ -33,8 +33,8 @@ class OdomPublisher(Node):
         self.tf_broadcaster_ = TransformBroadcaster(self)
 
         # robot parameter
-        self.track_width = 0.325  # [m]
-        self.wheel_radius = 0.025
+        self.track_width = 0.28  # [m]
+        self.wheel_radius = 0.041
 
         self.x = 0.0
         self.y = 0.0
@@ -50,8 +50,8 @@ class OdomPublisher(Node):
         self.V_l = 0.0
 
     def feedback_callback(self, msg):
-        self.V_r = -msg.data[0]
-        self.V_l = -msg.data[1]
+        self.V_r = -msg.data[0] * self.wheel_radius
+        self.V_l = -msg.data[1] * self.wheel_radius
 
     def publish_odometry(self):
 
@@ -59,7 +59,6 @@ class OdomPublisher(Node):
         current_time_msg = current_time.to_msg()
 
         df_actual = (current_time - self.last_time).nanoseconds / 1e9
-
         # x,y,thetaの算出
         v = (self.V_r + self.V_l) / 2.0
         omega = (self.V_r - self.V_l) / self.track_width
@@ -114,7 +113,7 @@ class OdomPublisher(Node):
         t.transform.rotation.z = qz
         t.transform.rotation.w = qw
 
-        self.tf_broadcaster_.sendTransform(t)
+        #self.tf_broadcaster_.sendTransform(t)
 
         self.last_time = current_time
 

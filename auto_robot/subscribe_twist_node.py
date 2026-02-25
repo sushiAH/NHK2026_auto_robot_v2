@@ -32,7 +32,7 @@ class TwistSubscriber(Node):
         self.subscription_twist
 
         # robot_params
-        self.track_width = 0.285  # [m]
+        self.track_width = 0.28  # [m]
         self.wheel_radius = 0.041  # [m]
         self.dyna_vel_gain = (0.229 * 2.0 * math.pi * self.wheel_radius) / 60.0
 

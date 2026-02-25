@@ -29,6 +29,7 @@ import time
 
 from std_msgs.msg import UInt8, UInt16, String
 from rclpy.node import Node
+from rclpy.callback_groups import ReentrantCallbackGroup
 from sensor_msgs.msg import Joy
 from geometry_msgs.msg import TransformStamped, Twist
 from tf2_ros import TransformBroadcaster
@@ -74,24 +75,39 @@ class OverStepsActionServer(Node):
     def __init__(self):
         super().__init__("over_steps_server")
 
-        self._action_server = ActionServer(self,
-                                           OverSteps,
-                                           "over_steps",
-                                           self.execute_callback,
-                                           cancel_callback=self.cancel_callback)
+        self.cb_group = ReentrantCallbackGroup()
+
+        self._action_server = ActionServer(
+            self,
+            OverSteps,
+            "over_steps",
+            self.execute_callback,
+            callback_group=self.cb_group,
+        )
 
         self.subscription_tof_forward = self.create_subscription(
-            UInt16, "/tof_forward", self.subscribe_tof_forward, 10)
+            UInt16,
+            "/tof_forward",
+            self.subscribe_tof_forward,
+            10,
+            callback_group=self.cb_group,
+        )
         self.subscription_tof_forward
 
         self.subscription_tof_backward = self.create_subscription(
-            UInt16, "/tof_backward", self.subscribe_tof_backward, 10)
+            UInt16,
+            "/tof_backward",
+            self.subscribe_tof_backward,
+            10,
+            callback_group=self.cb_group,
+        )
         self.subscription_tof_backward
 
         # publisherの設定
         # dynamixel_extended
         self.dyna_extpos_publisher = self.create_publisher(
             DynaTarget, "/dyna_target_extpos", 10)
+
         #twistの配信
         self.twist_publisher = self.create_publisher(Twist, "/cmd_vel", 10)
 
@@ -104,12 +120,12 @@ class OverStepsActionServer(Node):
         send_packet_1byte(0x012, 0, 4, CAN_BUS)  # set_operating
         send_packet_1byte(0x013, 0, 4, CAN_BUS)  # set_operating
 
+        #init_dc_motor
+        move_motor(0)
+
         #init_dynamixel
         self.publish_dyna_extpos(4, 600)
         self.publish_dyna_extpos(5, 600)
-
-        #init_dc_motor
-        move_motor(0)
 
     def publish_dyna_extpos(self, id, target):
         msg = DynaTarget()
@@ -148,10 +164,6 @@ class OverStepsActionServer(Node):
             goal_handle.abort()
 
         return res
-
-    def cancel_callback(self, goal_handle):
-        self.get_logger().info("キャンセルリクエスト送信")
-        return CancelResponse.ACCEPT
 
     async def climb_steps(self):
         self.get_logger().info("段差超えアクションを開始します。")
@@ -232,7 +244,7 @@ class OverStepsActionServer(Node):
         time.sleep(4.0)
 
         #後ろ向きに直進する
-        self.publish_twist(-0.1)
+        self.publish_twist(-0.1, 0)
         time.sleep(1.0)
 
         #車体を停止し、フレーム高さをもとに戻す
@@ -251,3 +263,7 @@ def main():
     executor.add_node(node)
     executor.spin()
     rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

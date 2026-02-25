@@ -224,7 +224,7 @@ class feedback_publisher(Node):
             1e-3,  # yaw角速度の信頼度
         ]
 
-        self.odom_pub.publish(odom)
+        # self.odom_pub.publish(odom)
 
         # imuの配信
         imu = Imu()
