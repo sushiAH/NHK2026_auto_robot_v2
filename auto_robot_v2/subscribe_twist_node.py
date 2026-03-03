@@ -13,7 +13,7 @@ from tf2_ros import TransformBroadcaster
 from nav_msgs.msg import Odometry
 import atexit
 
-from auto_robot_interfaces.msg import DynaFeedback, DynaTarget
+from dyna_interfaces.msg import DynaFeedback, DynaTarget
 
 
 class TwistSubscriber(Node):

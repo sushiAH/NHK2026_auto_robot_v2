@@ -13,7 +13,7 @@ from geometry_msgs.msg import TransformStamped, Twist
 from tf2_ros import TransformBroadcaster
 from nav_msgs.msg import Odometry
 
-from auto_robot_interfaces.msg import DynaFeedback
+from dyna_interfaces_v2.msg import DynaFeedback, DynaTarget
 
 
 def calc_frame_height(dis_cm):

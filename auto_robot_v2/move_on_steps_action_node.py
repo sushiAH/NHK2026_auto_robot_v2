@@ -20,8 +20,8 @@ from rclpy.action import ActionServer, CancelResponse
 from rclpy.callback_groups import ReentrantCallbackGroup
 
 #自作ライブラリ
-from auto_robot_interfaces.action import MoveOnSteps
-from auto_robot_interfaces.msg import DynaFeedback, DynaTarget
+from auto_robot_interfaces_v2.action import MoveOnSteps
+from dyna_interfaces.msg import DynaFeedback, DynaTarget
 import os
 import sys
 

@@ -3,11 +3,11 @@ from rclpy.node import Node
 from rclpy.action import ActionServer
 from rclpy.callback_groups import ReentrantCallbackGroup
 from geometry_msgs.msg import PoseWithCovarianceStamped, Pose
-from auto_robot_interfaces.action import PoseCorrection
 import time
 import math
 import asyncio
 
+from auto_robot_interfaces_v2.action import PoseCorrection
 #自作ライブラリ
 import os
 import sys

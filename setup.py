@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 import os
 from glob import glob
 
-package_name = "auto_robot"
+package_name = "auto_robot_v2"
 
 setup(
     name=package_name,
@@ -28,18 +28,18 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "subscribe_twist_node = auto_robot.subscribe_twist_node:main",
-            "publish_odom_node = auto_robot.publish_odom_node:main",
-            "follow_spline_node = auto_robot.follow_spline_node:main",
-            "joy2twist_node = auto_robot.joy2twist_node:main",
-            "publish_feedback_node = auto_robot.publish_feedback_node:main",
-            "control_over_steps_action_node = auto_robot.control_over_steps_action_node:main",
-            "control_box_arm_action_node = auto_robot.control_box_arm_action_node:main",
-            "control_spear_action_node = auto_robot.control_spear_action_node:main",
-            "correcting_pos_on_step_action_node = auto_robot.correcting_pos_on_step_action_node:main",
-            "switch_localization_action_node = auto_robot.switch_localization_action_node:main",
-            "move_on_steps_action_node = auto_robot.move_on_steps_action_node:main",
-            "robot_client_node = auto_robot.robot_client_node:main",
+            "subscribe_twist_node = auto_robot_v2.subscribe_twist_node:main",
+            "publish_odom_node = auto_robot_v2.publish_odom_node:main",
+            "follow_spline_node = auto_robot_v2.follow_spline_node:main",
+            "joy2twist_node = auto_robot_v2.joy2twist_node:main",
+            "publish_feedback_node = auto_robot_v2.publish_feedback_node:main",
+            "control_over_steps_action_node = auto_robot_v2.control_over_steps_action_node:main",
+            "control_box_arm_action_node = auto_robot_v2.control_box_arm_action_node:main",
+            "control_spear_action_node = auto_robot_v2.control_spear_action_node:main",
+            "correcting_pos_on_step_action_node = auto_robot_v2.correcting_pos_on_step_action_node:main",
+            "switch_localization_action_node = auto_robot_v2.switch_localization_action_node:main",
+            "move_on_steps_action_node = auto_robot_v2.move_on_steps_action_node:main",
+            "robot_client_node = auto_robot_v2.robot_client_node:main",
         ],
     },
 )

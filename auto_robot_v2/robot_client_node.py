@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
-from auto_robot_interfaces.action import OverSteps, BoxArm, PoseCorrection, MoveOnSteps
+from auto_robot_interfaces_v2.action import OverSteps, BoxArm, PoseCorrection, MoveOnSteps
 import asyncio
 
 

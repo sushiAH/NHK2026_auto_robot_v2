@@ -40,8 +40,8 @@ import asyncio
 from rclpy.action import ActionServer, CancelResponse
 
 #自作ライブラリ
-from auto_robot_interfaces.action import OverSteps
-from auto_robot_interfaces.msg import DynaFeedback, DynaTarget
+from auto_robot_interfaces_v2.action import OverSteps
+from dyna_interfaces.msg import DynaFeedback, DynaTarget
 import os
 import sys
 

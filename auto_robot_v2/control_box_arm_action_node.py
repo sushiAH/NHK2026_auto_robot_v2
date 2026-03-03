@@ -30,7 +30,7 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 
 #自作ライブラリ
 from auto_robot_interfaces_v2.action import BoxArm
-from auto_robot_interfaces_v2.msg import DynaFeedback, DynaTarget
+from dyna_interfaces.msg import DynaFeedback, DynaTarget
 import os
 import sys
 

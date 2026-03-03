@@ -6,7 +6,7 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from lifecycle_msgs.srv import ChangeState
 from lifecycle_msgs.msg import Transition
-from auto_robot_interfaces.action import SwitchLoc
+from auto_robot_interfaces_v2.action import SwitchLoc
 
 
 class LocalizationManager(Node):
