@@ -10,11 +10,14 @@ from launch.actions import ExecuteProcess, SetEnvironmentVariable
 
 def generate_launch_description():
     ld = LaunchDescription()
+    package_dir = get_package_share_directory("auto_robot_v2")
 
-    package_dir = get_package_share_directory("auto_robot")
-
+    # ----Params----
     ekf_config_file_path = os.path.join(
-        get_package_share_directory("auto_robot"), "config", "ekf.yaml")
+        get_package_share_directory("auto_robot_v2"), "config", "ekf.yaml")
+    dyna_config_file_path = os.path.join(
+        get_package_share_directory("auto_robot_v2"), "config",
+        "dyna_params.yaml")
 
     zenoh_bridge = ExecuteProcess(
         cmd=[
@@ -27,43 +30,39 @@ def generate_launch_description():
         name="zenoh_bridge",
     )
 
-    # ノード定義
-    odom_node = Node(
-        package="auto_robot",  # package_name
-        executable="publish_odom_node",  # node_name
-    )
-
+    # ----ノード定義----
     move_on_steps_node = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="move_on_steps_action_node",
         output="screen",
     )
+
     box_arm_node = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="control_box_arm_action_node",
         output="screen",
     )
 
-    pos_on_steps_node = Node(
-        package="auto_robot",
+    correct_pos_on_steps_node = Node(
+        package="auto_robot_v2",
         executable="correcting_pos_on_step_action_node",
         output="screen",
     )
 
     oversteps_node = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="control_over_steps_action_node",
         output="screen",
     )
 
     robot_client_node = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="robot_client_node",
         output="screen",
     )
 
     subtwist_node = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="subscribe_twist_node",
     )
 
@@ -74,7 +73,7 @@ def generate_launch_description():
     )
 
     joy2twist_node = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="joy2twist_node",
     )
 
@@ -88,17 +87,15 @@ def generate_launch_description():
                     name="ekf_filter_node",
                     parameters=[ekf_config_file_path])
 
-    pub_feed_node = Node(package="auto_robot",
+    pub_feed_node = Node(package="auto_robot_v2",
                          executable="publish_feedback_node",
                          parameters=[{
                              "port_name": "/dev/ttyACM0",
                          }])
 
     dyna_node = Node(package="ah_ros2_dynamixel",
-                     executable="dyna_handler_node",
-                     parameters=[{
-                         "port_name": "/dev/ttyUSB-Dynamixel",
-                     }])
+                     executable="dyna_handler_node_v2",
+                     parameters=[dyna_config_file_path])
 
     static_transform_publisher_footprint_node = Node(
         package="tf2_ros",
@@ -131,22 +128,21 @@ def generate_launch_description():
 
     ld.add_action(dyna_node)
     ld.add_action(oversteps_node)
-    ld.add_action(pos_on_steps_node)
-    ld.add_action(move_on_steps_node)
-    ld.add_action(box_arm_node)
+    #ld.add_action(correct_pos_on_steps_node)
+    #ld.add_action(move_on_steps_node)
+    #ld.add_action(box_arm_node)
 
     #ld.add_action(zenoh_bridge)
-    ld.add_action(odom_node)
     ld.add_action(subtwist_node)
     ld.add_action(rviz_node)
-    #ld.add_action(joy2twist_node)
+    ld.add_action(joy2twist_node)
     ld.add_action(pub_feed_node)
     ld.add_action(ekf_node)
-    #ld.add_action(joy_node)
+    ld.add_action(joy_node)
 
     ld.add_action(static_transform_publisher_imu_node)
     ld.add_action(static_transform_publisher_footprint_node)
 
-    ld.add_action(robot_client_node)
+    #ld.add_action(robot_client_node)
 
     return ld

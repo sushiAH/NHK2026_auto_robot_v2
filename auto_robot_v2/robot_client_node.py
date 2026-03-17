@@ -17,6 +17,8 @@ class RobotActionClient(Node):
         self._action_client_move_on_steps = ActionClient(
             self, MoveOnSteps, "move_on_steps")
 
+        self._action_client_path = ActionClient(self, FollowPath, "follow_path")
+
     async def send_to_boxarm(self, mode):
         self._action_client_boxarm.wait_for_server()
         goal_msg = BoxArm.Goal()
@@ -95,6 +97,7 @@ class RobotActionClient(Node):
         else:
             self.get_logger().info("失敗")
 
+    # ロボット制御シーケンスはここに記述する
     async def run_robot_sequence(self):
 
         await self.send_to_correctpos()

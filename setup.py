@@ -29,7 +29,6 @@ setup(
     entry_points={
         "console_scripts": [
             "subscribe_twist_node = auto_robot_v2.subscribe_twist_node:main",
-            "publish_odom_node = auto_robot_v2.publish_odom_node:main",
             "follow_spline_node = auto_robot_v2.follow_spline_node:main",
             "joy2twist_node = auto_robot_v2.joy2twist_node:main",
             "publish_feedback_node = auto_robot_v2.publish_feedback_node:main",
@@ -39,6 +38,8 @@ setup(
             "correcting_pos_on_step_action_node = auto_robot_v2.correcting_pos_on_step_action_node:main",
             "switch_localization_action_node = auto_robot_v2.switch_localization_action_node:main",
             "move_on_steps_action_node = auto_robot_v2.move_on_steps_action_node:main",
+            "detect_aruco_action_node = auto_robot_v2.detect_aruco_action_node:main",
+            "is_vgoal_action_node = auto_robot_v2.is_vgoal_action_node:main",
             "robot_client_node = auto_robot_v2.robot_client_node:main",
         ],
     },

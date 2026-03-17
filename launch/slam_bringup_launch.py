@@ -9,41 +9,55 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
-
     ld = LaunchDescription()
+    package_dir = get_package_share_directory("auto_robot_v2")
 
-    package_dir = get_package_share_directory("auto_robot")
-
+    #---- Params ----
     # SLAM用パラメータ
     slam_params = os.path.join(package_dir, "config", "slam_params.yaml")
 
     ekf_config_file_path = os.path.join(
-        get_package_share_directory("auto_robot"), "config", "ekf.yaml")
+        get_package_share_directory("auto_robot_v2"), "config", "ekf.yaml")
 
     # laser_filter用パラメータ
     laser_filter_params = os.path.join(package_dir, "config",
                                        "laser_filter.yaml")
 
-    # ノード定義
+    dyna_config_file_path = os.path.join(
+        get_package_share_directory("auto_robot_v2"), "config",
+        "dyna_params.yaml")
 
-    pub_odom_node = Node(
-        package="auto_robot",  # package_name
-        executable="publish_odom_node",  # node_name
+    # ----ノード定義----
+    dyna_node = Node(package="ah_ros2_dynamixel",
+                     executable="dyna_handler_node",
+                     parameters=[{
+                         "port_name": "/dev/ttyUSB-Dynamixel",
+                     }])
+
+    oversteps_node = Node(
+        package="auto_robot_v2",
+        executable="control_over_steps_action_node",
+        output="screen",
+    )
+
+    joy_node = Node(
+        package="joy_linux",
+        executable="joy_linux_node",
     )
 
     sub_twist_node = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="subscribe_twist_node",
     )
 
     pub_feedback_node = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="publish_feedback_node",
     )
 
     joy2twist_node = Node(
-        package="auto_robot",
         executable="joy2twist_node",
+        package="auto_robot_v2",
     )
 
     ekf_node = Node(
@@ -52,6 +66,10 @@ def generate_launch_description():
         name="ekf_filter_node",
         parameters=[ekf_config_file_path],
     )
+
+    dyna_node = Node(package="ah_ros2_dynamixel",
+                     executable="dyna_handler_node_v2",
+                     parameters=[dyna_config_file_path])
 
     rviz2 = Node(
         package="rviz2",
@@ -68,21 +86,21 @@ def generate_launch_description():
         remappings=[("/scan", "/scan_filtered")],
     )
 
-    # 静的tfの配信
+    # ---- 静的tfの配信----
     # base_link -> laser
     static_tf_s2 = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         output="screen",
         arguments=[
-            "0.0",
-            "0.215",
-            "0.0",
-            "-1.5708",
-            "0.0",
-            "0.0",
-            "base_link",
-            "laser_s2",
+            "0.225",  #x
+            "-0.215",  #y
+            "0.0",  #z
+            "-3.1416",  #yaw
+            "0.0",  #pitch
+            "0.0",  #roll
+            "base_link",  #parent frame id
+            "laser_s2",  #child frame id
         ],
     )
 
@@ -91,10 +109,10 @@ def generate_launch_description():
         executable="static_transform_publisher",
         output="screen",
         arguments=[
+            "0.225",
+            "0.215",
             "0.0",
-            "-0.215",
-            "0.0",
-            "1.5708",
+            "3.1416",
             "0.0",
             "0.0",
             "base_link",
@@ -149,11 +167,11 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(lidar_s2_launch_file_path),
             launch_arguments={
-                "serial_port": "/dev/ttyUSB1",
+                "serial_port": "/dev/ttyUSB-S2",
                 "serial_baudrate": "1000000",  # S2の標準
                 "frame_id": "laser_s2",
                 "scan_mode": "",  # 10Hz(同期用)
-                "inverted": "false",
+                "inverted": "true",  #逆さ向きならばtrue
             }.items(),
         ),
     ])
@@ -165,11 +183,11 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(lidar_a3_launch_file_path),
             launch_arguments={
-                "serial_port": "/dev/ttyUSB2",
+                "serial_port": "/dev/ttyUSB-A3",
                 "serial_baudrate": "256000",  # A3の標準
                 "frame_id": "laser_a3",
                 "scan_mode": "Sensitivity",  # 10Hz(同期用)
-                "inverted": "false",
+                "inverted": "true",
             }.items(),
         ),
     ])
@@ -186,13 +204,13 @@ def generate_launch_description():
             "scanTopic2": "/lidar_a3/scan",
             "show1": True,
             "show2": True,
-            "laser1Alpha": -90.0,
-            "laser1XOff": 0.0,
-            "laser1YOff": 0.125,
+            "laser1Alpha": -180.0,  #向き
+            "laser1XOff": 0.255,  #x方向位置
+            "laser1YOff": -0.125,  #y方向位置
             "laser1ZOff": 0.0,
-            "laser2Alpha": 90.0,
-            "laser2XOff": 0.0,
-            "laser2YOff": -0.125,
+            "laser2Alpha": 180.0,
+            "laser2XOff": 0.255,
+            "laser2YOff": 0.125,
             "laser2ZOff": 0.0,
             "laser1AngleMax": 180.0,
             "laser1AngleMin": -180.0,
@@ -220,8 +238,8 @@ def generate_launch_description():
             "use_inf": True,
         }],
         remappings=[
-            ("cloud_in", "/merged_cloud"),  # Mergerの出力を入れる
-            ("scan", "/scan_merged_raw"),  # フィルタ前のスキャンとして出力
+            ("cloud_in", "/merged_cloud"),  # 入力
+            ("scan", "/scan_merged_raw"),  # 出力 
         ],
     )
 
@@ -236,13 +254,16 @@ def generate_launch_description():
             }
         ],
         output="screen",
-        remappings=[("scan", "/scan_merged_raw"),
-                    ("scan_filtered", "/scan_filtered")],
-        #                 入力                         出力
+        remappings=[
+            ("scan", "/scan_merged_raw"),  # 入力　
+            ("scan_filtered", "/scan_filtered")  # 出力
+        ],
     )
 
+    ld.add_action(dyna_node)
+    ld.add_action(oversteps_node)
+    ld.add_action(joy_node)
     ld.add_action(sub_twist_node)
-    ld.add_action(pub_odom_node)
     ld.add_action(pub_feedback_node)
     ld.add_action(joy2twist_node)
     ld.add_action(rviz2)

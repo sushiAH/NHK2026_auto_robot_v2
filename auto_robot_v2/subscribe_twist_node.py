@@ -1,6 +1,4 @@
-"""twistを受け取って、dynamixelモーターに指示値を送信する。
-/dyna_target_posトピックを送信することで、dynamixelモーターに指示値を送信する
-"""
+"""twistをsubscribeして、足回りesp32にモーター指令値を送信する"""
 
 import rclpy
 from rclpy.node import Node
@@ -13,47 +11,96 @@ from tf2_ros import TransformBroadcaster
 from nav_msgs.msg import Odometry
 import atexit
 
-from dyna_interfaces.msg import DynaFeedback, DynaTarget
+#自作ライブラリ
+import os
+import sys
+
+target_dir = os.path.abspath("/home/aratahorie/ah_python_libraries")
+sys.path.append(target_dir)
+from ah_python_can import *
+
+#足回り用(id 2)エンコーダーピン配列
+#const int ENC_PINNUM_A[4] = {19, 17, 21, 15};  足回りのピン
+#const int ENC_PINNUM_B[4] = {23, 18, 16, 2};
+
+
+def from_twist_to_motor_vel(vx, vy, w, L, fy):
+    V_1 = (-vx - -vy + 2 * math.sqrt(2) * w * L) / (4 * math.pi * fy)
+    V_2 = (vx + vy + 2 * math.sqrt(2) * w * L) / (4 * math.pi * fy)
+    V_3 = (vx - vy + 2 * math.sqrt(2) * w * L) / (4 * math.pi * fy)
+    V_4 = (vx + vy + 2 * math.sqrt(2) * -w * L) / (4 * math.pi * fy)
+
+    return (V_1, V_2, V_3, V_4)
+
+
+bus = can.interface.Bus(bustype="socketcan",
+                        channel="can0",
+                        asynchronous=True,
+                        bitrate=1000000)
 
 
 class TwistSubscriber(Node):
 
     def __init__(self):
-        super().__init__("twist_subscriber")
+        super().__init__("TwistSubscriber")
 
-        self.dyna_vel_publisher = self.create_publisher(DynaTarget,
-                                                        "/dyna_target_vel", 10)
+        # 足回り速度制御立ち上げ
+        set_enc_vel_mode(0x010, bus)
+        set_enc_vel_mode(0x011, bus)
+        set_enc_vel_mode(0x012, bus)
+        set_enc_vel_mode(0x013, bus)
+
+        set_vel_pid_gain(0x010, 20, 4000, 0, bus)
+        set_vel_pid_gain(0x011, 20, 4000, 0, bus)
+        set_vel_pid_gain(0x012, 20, 4000, 0, bus)
+        set_vel_pid_gain(0x013, 20, 4000, 0, bus)
+
         self.subscription_twist = self.create_subscription(
             Twist,  # メッセージの型
             "/cmd_vel",  # 購読するトピック名
-            self.twist2dyna,  # 呼び出すコールバック関数
+            self.twist_callback,  # 呼び出すコールバック関数
             10,
-        )
+        )  # キューサイズ(溜まっていく)
+
         self.subscription_twist
 
-        # robot_params
-        self.track_width = 0.28  # [m]
-        self.wheel_radius = 0.041  # [m]
-        self.dyna_vel_gain = (0.229 * 2.0 * math.pi * self.wheel_radius) / 60.0
+        # --- Config ---
+        # 車体横の長さ
+        self.L = 0.3
+        # 車体中心からタイヤまでの距離
+        self.fy = 0.127
 
-    def publish_dyna_vel(self, id, target):
-        msg = DynaTarget()
-        msg.id = id
-        msg.target = target
-        self.dyna_vel_publisher.publish(msg)
+        # メンバーの初期化
+        self.linear_x = 0
+        self.linear_y = 0
+        self.w = 0
 
-    def twist2dyna(self, msg):
+        timer_period = 0.01
+        # wirte_to_motorの割り込み設定
+        self.timer = self.create_timer(timer_period, self.write_to_motor)
 
-        straight = -msg.linear.x
-        w = msg.angular.z
+    def twist_callback(self, msg):
+        """subscribe twist message, store twist in member value
 
-        V_r = int(
-            (2 * straight - w * self.track_width) / (2 * self.dyna_vel_gain))
-        V_l = -int(
-            (2 * straight + w * self.track_width) / (2 * self.dyna_vel_gain))
+        Args:
+            msg (Twist): [twist message]
+        """
+        self.linear_x = msg.linear.x
+        self.linear_y = msg.linear.y
+        self.w = msg.angular.z
 
-        self.publish_dyna_vel(0, V_r)  #差動二輪の右車輪
-        self.publish_dyna_vel(1, V_l)  #差動二輪の左車輪
+    def write_to_motor(self):
+        """Twistをメカナムホイール逆運動学で、各モーターの速度指令値に分解。4つの速度指令値を一つのパケットでesp32に送信する"""
+        vx = self.linear_x
+        vy = self.linear_y
+        w = self.w
+
+        V_1, V_2, V_3, V_4 = from_twist_to_motor_vel(vx, vy, w, self.L, self.fy)
+
+        set_goal_vel(0x010, V_1, bus)
+        set_goal_vel(0x011, V_2, bus)
+        set_goal_vel(0x012, V_3, bus)
+        set_goal_vel(0x013, V_4, bus)
 
 
 def main():
@@ -61,10 +108,20 @@ def main():
 
     twist_subscriber_node = TwistSubscriber()
 
-    rclpy.spin(twist_subscriber_node)  # ノードをスピンさせる
-    twist_subscriber_node.destroy_node()  # ノードを停止する
+    rclpy.spin(twist_subscriber_node)
+    twist_subscriber_node.destroy_node()
     rclpy.shutdown()
 
+
+def stop():
+    """停止モードにする"""
+    set_stop_mode(0x010, bus)
+    set_stop_mode(0x011, bus)
+    set_stop_mode(0x012, bus)
+    set_stop_mode(0x013, bus)
+
+
+atexit.register(stop)
 
 if __name__ == "__main__":
     main()

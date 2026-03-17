@@ -26,7 +26,7 @@ amcl:
     recovery_alpha_fast: 0.0 # 急激な変化時の回復係数（迷子対策）
     recovery_alpha_slow: 0.0 # 緩やかな変化時の回復係数
     resample_interval: 1 # リサンプリングを行う頻度
-    robot_model_type: "nav2_amcl::DifferentialMotionModel" # 移動モデル（差動二輪: Differential, 全方向: Omnidirectional）
+    robot_model_type: "nav2_amcl::OmnidirectionalMotionModel" # 移動モデル（差動二輪: Differential, 全方向: Omnidirectional）
     save_pose_rate: 0.5 # 推定位置を保存する頻度（Hz）
     sigma_hit: 0.2 # ヒットモデルの標準偏差
     tf_broadcast: true # map->odomのTFを配信するか（必須）

@@ -1,22 +1,3 @@
-"""
-やり制御フロー
-経路追従でやりの前まで来る
-amclを無効化する
-フレームを浮かす
-odomを用いて前進する
-取得する
-odomを用いて後退する
-開始位置を指定してamclを有効化する
-
-
-このプログラムには、
-フレームを浮かす
-odomを用いて前進する
-取得する
-odomを用いて後退する
-までを書く
-"""
-
 import rclpy
 import math
 import numpy as np
@@ -32,49 +13,45 @@ import atexit
 
 import asyncio
 from rclpy.action import ActionServer, CancelResponse
+from rclpy.callback_groups import ReentrantCallbackGroup
 
 #自作ライブラリ
-from auto_robot_interfaces_v2.action import Spear
-from dyna_interfaces.msg import DynaFeedback, DynaTarget
+from auto_robot_interfaces_v2.action import DetectAruco
 import os
 import sys
 
 target_dir = os.path.abspath("/home/aratahorie/ah_python_libraries")
 sys.path.append(target_dir)
-from ah_python_can import *
+from detect_aruco import *
 
 
 # ----Config Params -----
-class SpearController(Node):
+class DetectArucoController(Node):
 
     def __init__(self):
-        super().__init__("spear_controller")
+        super().__init__("detect_aruco")
+
+        self.cb_group = ReentrantCallbackGroup()
 
         self._action_server = ActionServer(
             self,
-            Spear,
-            "spear",
+            DetectAruco,
+            "detect_aruco",
             self.execute_callback,
+            callback_group=self.cb_group,
         )
 
-        # publisherの設定
-        self.dyna_pos_publisher = self.create_publisher(DynaTarget,
-                                                        "/dyna_target_pos", 10)
-
-    def publish_dyna_pos(self, id, target):
-        msg = DynaTarget()
-        msg.id = id
-        msg.target = target
-        self.dyna_pos_publisher.publish(msg)
+        self.marker_id = 1
 
     # ---- Action実行メインロジック
     async def execute_callback(self, goal_handle):
+        self.get_logger().info("arucoマーカーを検出します")
+
         req = goal_handle.request
-        res = Spear.Result()
+        res = DetectAruco.Result()
         success = False
 
-        if req.mode == 1:
-            success = await self.spaer()
+        success = await detect_aruco(self.marker_id)
 
         res.success = success
 
@@ -85,14 +62,15 @@ class SpearController(Node):
 
         return res
 
-    async def spear(self):
-        pass
-
 
 def main():
     rclpy.init()
-    node = SpearController()
+    node = DetectArucoController()
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(node)
     executor.spin()
     rclpy.shutdown()
+
+
+if __name__ == "__main__":
+    main()

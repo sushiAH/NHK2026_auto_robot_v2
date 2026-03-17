@@ -22,16 +22,17 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 def generate_launch_description():
     ld = LaunchDescription()
 
-    package_dir = get_package_share_directory("auto_robot")
+    package_dir = get_package_share_directory("auto_robot_v2")
 
-    map_file_path = "/home/aratahorie/auto_robot/src/auto_robot/map/map_tamoku.yaml"
+    map_file_path = "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/map/map_1765226210.yaml"
 
     # 2. Nav2の設定ファイル
     nav2_params_path = (
-        "/home/aratahorie/auto_robot/src/auto_robot/config/nav2_params.yaml")
+        "/home/aratahorie/auto_robot_v2/src/auto_robot_v2/config/nav2_params.yaml"
+    )
 
     ekf_config_file_path = os.path.join(
-        get_package_share_directory("auto_robot"), "config", "ekf.yaml")
+        get_package_share_directory("auto_robot_v2"), "config", "ekf.yaml")
 
     rviz_config_path = os.path.join(package_dir, "rviz", "navigation_rviz.rviz")
 
@@ -39,23 +40,18 @@ def generate_launch_description():
     filter_params = os.path.join(package_dir, "config", "laser_filter.yaml")
 
     # ノード定義
-    pub_odom_node = Node(
-        package="auto_robot",  # package_name
-        executable="publish_odom_node",  # node_name
-    )
-
     sub_twist_node = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="subscribe_twist_node",
     )
 
     pub_feedback_node = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="publish_feedback_node",
     )
 
     joy2twist_node = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="joy2twist_node",
     )
 
@@ -69,7 +65,7 @@ def generate_launch_description():
     rviz2 = Node(package="rviz2",
                  executable="rviz2",
                  name="rviz2",
-                 parameters=[rviz_config_path]),
+                 parameters=[rviz_config_path])
 
     # 静的tfの配信
     # base_link -> laser
@@ -241,10 +237,11 @@ def generate_launch_description():
         output="screen",
         remappings=[("scan", "/scan_merged_raw"),
                     ("scan_filtered", "/scan_filtered")],
-        #                 入力                         出力
+        #                 入力              出力
     )
 
     # controller server
+    # pure_persuitなど
     controller_server_node = Node(
         package="nav2_controller",
         executable="controller_server",
@@ -280,7 +277,6 @@ def generate_launch_description():
     )
 
     ld.add_action(sub_twist_node)
-    ld.add_action(pub_odom_node)
     ld.add_action(pub_feedback_node)
     ld.add_action(joy2twist_node)
     ld.add_action(rviz2)

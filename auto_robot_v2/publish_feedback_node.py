@@ -1,4 +1,4 @@
-"""IMU,tofセンサ2つをpublishする"""
+"""IMU,tofセンサ2つ、接地エンコーダー2つをesp32からシリアル通信で受け取り、publishする"""
 
 import rclpy
 from rclpy.node import Node
@@ -39,7 +39,7 @@ class feedback_publisher(Node):
         self.declare_parameter("imu_frame_id", "imu_link")
         self.declare_parameter("odom_frame_id", "odom")
         self.declare_parameter("base_frame_id", "base_link")
-        self.declare_parameter("wheel_radius", 0.1)
+        self.declare_parameter("wheel_radius", 0.0235)  #[m]
         self.declare_parameter("port_name", "/dev/ttyACM0")
 
         self.imu_frame_id = self.get_parameter("imu_frame_id").value
@@ -51,9 +51,10 @@ class feedback_publisher(Node):
         # --- publisherの設定 ---
         self.imu_pub = self.create_publisher(Imu, "imu/data", 10)
         self.odom_pub = self.create_publisher(Odometry, "odom", 10)
-        self.tof_forward_pub = self.create_publisher(UInt16, "/tof_forward", 10)
-        self.tof_backward_pub = self.create_publisher(UInt16, "/tof_backward",
-                                                      10)
+        self.tof1_pub = self.create_publisher(UInt16, "/tof_1", 10)
+        self.tof2_pub = self.create_publisher(UInt16, "/tof_2", 10)
+        self.tof3_pub = self.create_publisher(UInt16, "/tof_3", 10)
+        self.tof4_pub = self.create_publisher(UInt16, "/tof_4", 10)
 
         # recv_feedbackの割り込み設定
         self.recv_feedback_timer = self.create_timer(0.005, self.recv_feedback)
@@ -76,16 +77,19 @@ class feedback_publisher(Node):
         self.ang_y_vel = 0.0
         self.ang_z_vel = 0.0
 
-        self.tof_forward = 0
-        self.tof_backward = 0
+        self.tof1 = 0
+        self.tof2 = 0
+        self.tof3 = 0
+        self.tof4 = 0
 
-        self.x = 0.0
-        self.y = 0.0
-        self.theta = 0.0
         self.last_time = self.get_clock().now()
 
+        # ---- Params -----
+        self.Lx = 0.313  #中心からy軸odomまでの距離[m]
+        self.y_enc_alpha = 16.7  #y方向エンコーダーの中心からの角度 [degree]
+
     def recv_feedback(self):
-        struct_format = "<BIfffffffffHHB"
+        struct_format = "<BIfffffffffHHHHB"
         packet = receive_packet(struct_format, self.ser)
 
         if packet != None:
@@ -100,11 +104,13 @@ class feedback_publisher(Node):
             self.ang_y_vel = packet[7]
             self.ang_z_vel = packet[8]
 
-            self.enc_x_vel = packet[9]
+            self.enc_x_vel = packet[9]  #[rot/s]
             self.enc_y_vel = packet[10]
 
-            self.tof_forward = packet[11]
-            self.tof_backward = packet[12]
+            self.tof1 = packet[11]  #前方
+            self.tof2 = packet[12]
+            self.tof3 = packet[13]
+            self.tof4 = packet[14]  #後方
 
     def publish_feedback(self):
         current_time = self.get_clock().now()
@@ -112,13 +118,21 @@ class feedback_publisher(Node):
         self.last_time = current_time
 
         # tofの配信
-        tof_forward_msg = UInt16()
-        tof_forward_msg.data = int(self.tof_forward)
-        self.tof_forward_pub.publish(tof_forward_msg)
+        tof1_msg = UInt16()
+        tof1_msg.data = int(self.tof1)
+        self.tof1_pub.publish(tof1_msg)
 
-        tof_backward_msg = UInt16()
-        tof_backward_msg.data = int(self.tof_backward)
-        self.tof_backward_pub.publish(tof_backward_msg)
+        tof2_msg = UInt16()
+        tof2_msg.data = int(self.tof2)
+        self.tof2_pub.publish(tof2_msg)
+
+        tof3_msg = UInt16()
+        tof3_msg.data = int(self.tof3)
+        self.tof3_pub.publish(tof3_msg)
+
+        tof4_msg = UInt16()
+        tof4_msg.data = int(self.tof4)
+        self.tof4_pub.publish(tof4_msg)
 
         # odomの配信
         odom = Odometry()
@@ -126,17 +140,9 @@ class feedback_publisher(Node):
         odom.header.frame_id = self.odom_frame_id
         odom.child_frame_id = self.base_frame_id
 
-        # odomの計算
-        delta_x, delta_y, delta_theta = calc_delta_odometry(
-            self.enc_x_vel, self.enc_y_vel, self.theta, self.ang_z_vel, dt)
-
-        self.x += delta_x * (2 * math.pi / 60.0) * self.wheel_radius
-        self.y += delta_y * (2 * math.pi / 60.0) * self.wheel_radius
-        self.theta += delta_theta
-
-        # 位置情報
-        odom.pose.pose.position.x = self.x
-        odom.pose.pose.position.y = self.y
+        # 位置情報 (積分計算はekfが行う)
+        odom.pose.pose.position.x = 0.0
+        odom.pose.pose.position.y = 0.0
         odom.pose.pose.position.z = 0.0
 
         # 共分散(位置)
@@ -179,10 +185,24 @@ class feedback_publisher(Node):
             1e-3,  # yaw
         ]
 
-        # 速度情報
-        odom.twist.twist.linear.x = self.enc_x_vel
-        odom.twist.twist.linear.y = self.enc_y_vel
-        odom.twist.twist.angular.z = self.ang_z_vel
+        # 速度情報 (角速度は0)
+        wheel_x_vel = self.enc_x_vel * 2 * math.pi * self.wheel_radius  # [m/s]
+        wheel_y_vel = -(self.enc_y_vel * 2 * math.pi * self.wheel_radius)
+        euler = tf_transformations.euler_from_quaternion(
+            [self.q_x, self.q_y, self.q_z, self.q_w])
+        yaw = euler[2]
+        alpha = np.deg2rad(self.y_enc_alpha)
+        cos, sin = np.cos(yaw), np.sin(yaw)
+
+        R = np.array([[cos, -sin, self.Lx * np.cos(alpha) * sin],
+                      [sin, cos, -self.Lx * np.cos(alpha) * cos]])
+
+        vec = np.array([wheel_x_vel, wheel_y_vel, self.ang_z_vel])
+        twist_vec = R @ vec
+
+        odom.twist.twist.linear.x = twist_vec[0]
+        odom.twist.twist.linear.y = twist_vec[1]
+        odom.twist.twist.angular.z = 0.0
 
         # 共分散(Twist)
         odom.twist.covariance = [
@@ -224,7 +244,7 @@ class feedback_publisher(Node):
             1e-3,  # yaw角速度の信頼度
         ]
 
-        # self.odom_pub.publish(odom)
+        self.odom_pub.publish(odom)
 
         # imuの配信
         imu = Imu()

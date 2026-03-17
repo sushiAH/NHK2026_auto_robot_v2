@@ -10,22 +10,22 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 def generate_launch_description():
     ld = LaunchDescription()
 
-    package_dir = get_package_share_directory("auto_robot")
+    package_dir = get_package_share_directory("auto_robot_v2")
 
     # setting node
     node1 = Node(
-        package="auto_robot",  # package_name
+        package="auto_robot_v2",  # package_name
         executable="control_over_steps_action_node",  # node_name
         output="screen",
     )
 
     node2 = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="publish_feedback_node",
     )
 
     node3 = Node(
-        package="auto_robot",
+        package="auto_robot_v2",
         executable="subscribe_twist_node",
     )
 

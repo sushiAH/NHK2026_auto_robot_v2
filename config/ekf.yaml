@@ -22,13 +22,10 @@ ekf_filter_node:
     #  vroll, vpitch, vyaw, 
     #  ax, ay, az]
     
-    # 解説:
-    # 位置(x,y,z)と姿勢(roll,pitch,yaw)は false にします (EKF内で積分計算させるため)
-    # 速度(vx, vy)は true にします (計測輪のデータを採用)
-    # 角速度(vyaw)は false にします (IMUの方を優先するため重複を避ける)
+    # vx,vyのみ
     odom0_config: [false, false, false,
                    false, false, false,
-                   true,  false,  false,
+                   true,  true,  false,
                    false, false, false,
                    false, false, false]
                    
@@ -39,13 +36,12 @@ ekf_filter_node:
     # --- IMU設定 (/imu/data) ---
     imu0: /imu/data
     
-    # 解説:
-    # 姿勢(yaw) と 角速度(vyaw) を true にします
+    # yawとvyawのみ
     imu0_config: [false, false, false,
                   false, false, true,
                   false, false, false,
                   false, false, true,
-                  false,  false, false] # ax (線形加速度) は任意。ドリフト補正に使うならtrue
+                  false,  false, false] 
                   
     imu0_differential: false
     imu0_queue_size: 10

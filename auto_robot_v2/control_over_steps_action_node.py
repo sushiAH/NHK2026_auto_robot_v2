@@ -1,23 +1,22 @@
 """段差上り、降り制御フロー
 段差上り
-    最初は(600,600)の状態
-    フレーム上げる(210,210) [mm]
+    初期化時、昇降を上げる(10,-10) [mm]
+    昇降下げる(-210,210) [mm]
     前方に進める
-    tof_forwardの値が小さくなったら(段差が近づいたら)、車体を止めて、前方の足を上げる(-10,210) [cm]
+    tof1の値が小さくなったら(段差が近づいたら)、車体を止めて、前方を上げる(10,210) [mm]
     決まった秒数が立ったら、dcモーターと、dynamixelを前方に動かす
-    tof_backwardの値が小さくなったら(段差が近づいたら)、車体を止めて、後方の足を上げる(-10,-10) [cm]
-    dcモーターと、dynamixelを前方に動かす
-    決まった秒数が立ったら車体を止め、フレームを600,600とする
+    tof_の値が小さくなったら(段差が近づいたら)、車体を止めて、後方を上げる(10,-10) [mm]
+    dcモーターを前方に動かす
     決まった秒数が立ったら終了
 
 段差降り(後ろ向き)
-    最初は(600,600)の状態
-    後方に進める
-    後方のtofがしきい値を超えたら、車体を止めて、後方の足を下げる
-    決まった秒数が立ったら、dcモーターとdynamixelを後方に動かす
-    前方のtofがしきい値を超えたら、車体を止めて、前方の足を下げる
-    後方に進める
-    決まった秒数が立ったら、車体を停止して、フレームを(600,600)とする
+    最初は(10,-10) [mm]の状態
+    前方に直進する
+    tof2がしきい値を超えたら、車体を止めて、前方を下げる(-210[mm],-10)
+    決まった秒数が立ったら、dcモーターを前方に動かす
+    tof4がしきい値を超えたら、車体を止めて、後方を下げる(-210[mm],210[mm])
+    dynamixelとdcモーターを前方に進める
+    決まった秒数が立ったら、車体を停止して、フレームを(10,-10) [mm]とする
     決まった秒数が立ったら終了
 　　
 """
@@ -56,18 +55,11 @@ CAN_BUS = can.interface.Bus(bustype="socketcan",
 
 # ----Config Params -----
 TOF_THRESHOLD_CLIMB = 200  # (210 - 200 = 10) < 100[mm]
-TOF_THRESHOLD_DESCEND = 500
+TOF_THRESHOLD_DESCEND = 200
 
 
 def calc_frame_height(dis_cm):
     return int((360 / (45 * math.pi) / 0.088) * (dis_cm))
-
-
-def move_motor(pwm):
-    send_packet_4byte(0x010, 3, -pwm, CAN_BUS)
-    send_packet_4byte(0x011, 3, -pwm, CAN_BUS)
-    send_packet_4byte(0x012, 3, pwm, CAN_BUS)
-    send_packet_4byte(0x013, 3, pwm, CAN_BUS)
 
 
 class OverStepsActionServer(Node):
@@ -85,47 +77,62 @@ class OverStepsActionServer(Node):
             callback_group=self.cb_group,
         )
 
-        self.subscription_tof_forward = self.create_subscription(
+        self.subscription_tof1 = self.create_subscription(
             UInt16,
-            "/tof_forward",
-            self.subscribe_tof_forward,
+            "/tof_1",
+            self.subscribe_tof1,
             10,
             callback_group=self.cb_group,
         )
-        self.subscription_tof_forward
+        self.subscription_tof1
 
-        self.subscription_tof_backward = self.create_subscription(
+        self.subscription_tof2 = self.create_subscription(
             UInt16,
-            "/tof_backward",
-            self.subscribe_tof_backward,
+            "/tof_2",
+            self.subscribe_tof2,
             10,
             callback_group=self.cb_group,
         )
-        self.subscription_tof_backward
+        self.subscription_tof2
+
+        self.subscription_tof3 = self.create_subscription(
+            UInt16,
+            "/tof_3",
+            self.subscribe_tof3,
+            10,
+            callback_group=self.cb_group,
+        )
+        self.subscription_tof3
+
+        self.subscription_tof4 = self.create_subscription(
+            UInt16,
+            "/tof_4",
+            self.subscribe_tof4,
+            10,
+            callback_group=self.cb_group,
+        )
+        self.subscription_tof4
 
         # publisherの設定
         # dynamixel_extended
         self.dyna_extpos_publisher = self.create_publisher(
             DynaTarget, "/dyna_target_extpos", 10)
 
-        #twistの配信
+        self.dyna_vel_publisher = self.create_publisher(DynaTarget,
+                                                        "/dyna_target_vel", 10)
+
+        #dc_motor_twistの配信
         self.twist_publisher = self.create_publisher(Twist, "/cmd_vel", 10)
 
         #内部変数の定義
-        self.tof_forward = 0
-        self.tof_backward = 0
-
-        send_packet_1byte(0x010, 0, 4, CAN_BUS)  # set_operating
-        send_packet_1byte(0x011, 0, 4, CAN_BUS)  # set_operating
-        send_packet_1byte(0x012, 0, 4, CAN_BUS)  # set_operating
-        send_packet_1byte(0x013, 0, 4, CAN_BUS)  # set_operating
-
-        #init_dc_motor
-        move_motor(0)
+        self.tof1 = 0
+        self.tof2 = 0
+        self.tof3 = 0
+        self.tof4 = 0
 
         #init_dynamixel
-        self.publish_dyna_extpos(4, 600)
-        self.publish_dyna_extpos(5, 600)
+        self.publish_dyna_extpos(2, calc_frame_height(10))  # 前方上げ
+        self.publish_dyna_extpos(3, calc_frame_height(-10))  # 後方上げ
 
     def publish_dyna_extpos(self, id, target):
         msg = DynaTarget()
@@ -133,17 +140,34 @@ class OverStepsActionServer(Node):
         msg.target = target
         self.dyna_extpos_publisher.publish(msg)
 
-    def publish_twist(self, straight, w):
+    def publish_dyna_vel(self, id, target):
+        msg = DynaTarget()
+        msg.id = id
+        msg.target = target
+        self.dyna_vel_publisher.publish(msg)
+
+    def publish_dyna_twist(self, vx):
+        self.publish_dyna_vel(0, vx)
+        self.publish_dyna_vel(1, -vx)
+
+    def publish_twist(self, vx, vy, w):
         twist = Twist()
-        twist.linear.x = float(straight)
+        twist.linear.x = float(vx)
+        twist.linear.y = float(vy)
         twist.angular.z = float(w)
         self.twist_publisher.publish(twist)
 
-    def subscribe_tof_forward(self, msg):
-        self.tof_forward = msg.data
+    def subscribe_tof1(self, msg):
+        self.tof1 = msg.data
 
-    def subscribe_tof_backward(self, msg):
-        self.tof_backward = msg.data
+    def subscribe_tof2(self, msg):
+        self.tof2 = msg.data
+
+    def subscribe_tof3(self, msg):
+        self.tof3 = msg.data
+
+    def subscribe_tof4(self, msg):
+        self.tof4 = msg.data
 
     # ---- Action実行メインロジック
     async def execute_callback(self, goal_handle):
@@ -170,46 +194,42 @@ class OverStepsActionServer(Node):
 
         #フレーム上昇
         self.get_logger().info("フレーム上昇")
-        self.publish_dyna_extpos(4, calc_frame_height(230))
-        self.publish_dyna_extpos(5, calc_frame_height(230))
+        self.publish_dyna_extpos(2, calc_frame_height(-210))
+        self.publish_dyna_extpos(3, calc_frame_height(210))
         time.sleep(4.0)
 
-        #直進
-        self.publish_twist(0.1, 0)
+        #dynamixel前進
+        self.publish_dyna_twist(100)
 
         #段差検知待ち
-        while self.tof_forward >= TOF_THRESHOLD_CLIMB:
+        while self.tof1 >= TOF_THRESHOLD_CLIMB:
             time.sleep(0.1)
 
         #停止して前方足上げ
-        self.publish_twist(0, 0)
-        move_motor(0)
-        self.publish_dyna_extpos(4, calc_frame_height(-10))
+        self.publish_dyna_twist(0)
+        self.publish_dyna_extpos(2, calc_frame_height(10))
         time.sleep(4.0)
 
         #再直進＆後方段差検知待ち
-        self.publish_twist(0.1, 0)
-        move_motor(400)
-        while (self.tof_backward >= TOF_THRESHOLD_CLIMB):
+        self.publish_dyna_twist(100)
+        self.publish_twist(0.5, 0, 0)
+        while (self.tof3 >= TOF_THRESHOLD_CLIMB):
             time.sleep(0.1)
 
         #停止して後方足上げ
-        self.publish_twist(0, 0)
-        move_motor(0)
-        self.publish_dyna_extpos(5, calc_frame_height(-10))
+        self.publish_dyna_twist(0)
+        self.publish_twist(0, 0, 0)
+        self.publish_dyna_extpos(3, calc_frame_height(-10))
         time.sleep(4.0)
 
         #最終直進
-        self.publish_twist(0.1, 0)
-        move_motor(400)
+        self.publish_dyna_twist(100)
+        self.publish_twist(0.5, 0, 0)
         time.sleep(2.0)
 
-        #フレームをもとに戻す
-        self.publish_twist(0, 0)
-        move_motor(0)
-        self.publish_dyna_extpos(4, 600)
-        self.publish_dyna_extpos(5, 600)
-        time.sleep(2.0)
+        #停止
+        self.publish_dyna_twist(0)
+        self.publish_twist(0, 0, 0)
 
         return True
 
@@ -217,40 +237,41 @@ class OverStepsActionServer(Node):
 
         self.get_logger().info("段差降りアクションを開始します。")
 
-        #後ろ向きに直進
-        self.publish_twist(-0.1, 0)
+        #前進
+        self.publish_twist(0.5, 0, 0)
 
-        #後方tof検知待ち
-        while (self.tof_backward <= TOF_THRESHOLD_DESCEND):
-            time.sleep(0.1)
-
-        #車体を止めて、後方の足を下げる
-        self.publish_twist(0, 0)
-        self.publish_dyna_extpos(5, calc_frame_height(230))
-        time.sleep(4.0)
-
-        #dcモーターとdynamixelを後方に動かす
-        self.publish_twist(-0.1, 0)
-        move_motor(-400)
-
-        #前方tof検知待ち
-        while (self.tof_forward <= TOF_THRESHOLD_DESCEND):
+        #tof2検知待ち
+        while (self.tof2 <= TOF_THRESHOLD_DESCEND):
             time.sleep(0.1)
 
         #車体を止めて、前方の足を下げる
-        self.publish_twist(0, 0)
-        move_motor(0)
-        self.publish_dyna_extpos(4, calc_frame_height(230))
+        self.publish_twist(0, 0, 0)
+        self.publish_dyna_extpos(2, calc_frame_height(-210))
+        time.sleep(4.0)
+
+        #dcモーターを前方に動かす
+        self.publish_twist(0.5, 0, 0)
+
+        #tof4検知待ち
+        while (self.tof4 <= TOF_THRESHOLD_DESCEND):
+            time.sleep(0.1)
+
+        #車体を止めて、後方の足を下げる
+        self.publish_twist(0, 0, 0)
+        self.publish_dyna_twist(0)
+        self.publish_dyna_extpos(3, calc_frame_height(210))
         time.sleep(4.0)
 
         #後ろ向きに直進する
-        self.publish_twist(-0.1, 0)
+        self.publish_twist(0.5, 0, 0)
+        self.publish_dyna_twist(100)
         time.sleep(1.0)
 
         #車体を停止し、フレーム高さをもとに戻す
-        self.publish_twist(0, 0)
-        self.publish_dyna_extpos(4, 600)
-        self.publish_dyna_extpos(5, 600)
+        self.publish_twist(0, 0, 0)
+        self.publish_dyna_twist(0)
+        self.publish_dyna_extpos(2, calc_frame_height(10))
+        self.publish_dyna_extpos(3, calc_frame_height(-10))
         time.sleep(2.0)
 
         return True

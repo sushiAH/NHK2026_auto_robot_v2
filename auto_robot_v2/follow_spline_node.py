@@ -1,3 +1,8 @@
+"""
+1点目、2点目はclicked_pointを受け取る
+3点目のみgoal_poseをうけとり、最終的にyaw角も合わせる
+"""
+
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
@@ -17,12 +22,16 @@ class RvizSplineFollower(Node):
 
         self.points = []
 
+        # publish pointの受取
         self.point_sub = self.create_subscription(PointStamped,
                                                   "/clicked_point",
                                                   self.point_callback, 10)
 
-        self.path_pub = self.create_publisher(Path, "/visual_spline_path", 10)
+        # 3点目を受け取るサブスクライバ
+        self.goal_sub = self.create_subscription(PoseStamped, "/goal_pose",
+                                                 self.goal_callback, 10)
 
+        self.path_pub = self.create_publisher(Path, "/visual_spline_path", 10)
         self._action_client = ActionClient(self, FollowPath, "follow_path")
 
         self.get_logger().info("RVizでpublish_pointを3回クリックしてください")
@@ -34,17 +43,27 @@ class RvizSplineFollower(Node):
             msg
         """
 
-        self.points.append([msg.point.x, msg.point.y])
-        self.get_logger().info(f"地点追加: {len(self.points)}点目")
+        if len(self.points) < 2:
+            self.points.append([msg.point.x, msg.point.y])
+            self.get_logger().info(f"地点追加: {len(self.points)}点目")
 
-        if len(self.points) == 3:
-            self.get_logger().info("3点取得、スプライン経路を生成して実行します")
-            path_msg = self.generate_path(self.points)
-            self.path_pub.publish(path_msg)
-            self.send_goal(path_msg)
-            self.points = []
+    def goal_callback(self, msg):
+        if len(self.points) != 2:
+            self.get_logger().warn("先に通過点を2点クリックしてください")
+            return
+        self.points.append([msg.pose.position.x, msg.pose.position.y])
 
-    def generate_path(self, pts):
+        q = msg.pose.orientation
+        final_yaw = math.atan2(2.0 * (q.w * q.z + q.x * q.y),
+                               1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+
+        self.get_logger().info("終点と向きを受理、経路を生成します")
+        path_msg = self.generate_path(self.points, final_yaw)
+        self.path_pub.publish(path_msg)
+        self.send_goal(path_msg)
+        self.points = []
+
+    def generate_path(self, pts, final_yaw):
         """pathをスプライン補完で生成
 
         Args:
@@ -72,6 +91,8 @@ class RvizSplineFollower(Node):
                 next_x = float(smooth_pts[i + 1][0])
                 next_y = float(smooth_pts[i + 1][1])
                 yaw = math.atan2(next_y - y, next_x - x)
+            else:
+                yaw = final_yaw
 
             quat = R.from_euler("z", yaw).as_quat()
 
@@ -87,11 +108,12 @@ class RvizSplineFollower(Node):
         return path
 
     def send_goal(self, path_msg):
-        self._action_client.wait_for_server()
+        if not self._action_client.wait_for_server(timeout_sec=1.0):
+            return
         goal_msg = FollowPath.Goal()
         goal_msg.path = path_msg
         goal_msg.controller.id = "FollowPath"
-        self._aciton_client.send_goal_async(goal_msg)
+        self._action_client.send_goal_async(goal_msg)
 
 
 def main():
