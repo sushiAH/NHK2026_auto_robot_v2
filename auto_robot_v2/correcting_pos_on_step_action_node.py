@@ -1,3 +1,5 @@
+""
+
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer
@@ -6,6 +8,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped, Pose
 import time
 import math
 import asyncio
+from dyna_interfaces.msg import DynaFeedback, DynaTarget
 
 from auto_robot_interfaces_v2.action import PoseCorrection
 #自作ライブラリ
@@ -37,8 +40,23 @@ class PoseCorrectionServer(Node):
             10,
         )
 
+        self.dyna_pos_publisher = self.create_publisher(DynaTarget,
+                                                        "/dyna_target_pos", 10)
+
+        #初期化(上向き)
+        self.publish_dyna_pos(10, 1010)
+
+    def publish_dyna_pos(self, id, target):
+        msg = DynaTarget()
+        msg.id = id
+        msg.target = target
+        self.dyna_pos_publisher.publish(msg)
+
     async def execute_callback(self, goal_handle):
         self.get_logger().info("自己位置を補正します")
+        #下を向く
+        self.publish_dyna_pos(10, 1960)
+        time.sleep(2.0)
 
         #初期化座標の取得
         msg = PoseWithCovarianceStamped()
@@ -62,6 +80,9 @@ class PoseCorrectionServer(Node):
         #座標の送信
         self.initial_pose_pub.publish(msg)
         time.sleep(1.0)
+
+        #上を向く
+        self.publish_dyna_pos(10, 1010)
         self.get_logger().info("動作終了、待機します")
         goal_handle.succeed()
 

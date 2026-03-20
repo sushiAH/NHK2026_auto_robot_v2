@@ -13,7 +13,7 @@ pc to scan
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction, TimerAction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, PushRosNamespace
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -24,20 +24,20 @@ def generate_launch_description():
 
     package_dir = get_package_share_directory("auto_robot_v2")
 
-    map_file_path = "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/map/map_1765226210.yaml"
+    map_file_path = "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/map/c419_map.yaml"
 
     # 2. Nav2の設定ファイル
     nav2_params_path = (
         "/home/aratahorie/auto_robot_v2/src/auto_robot_v2/config/nav2_params.yaml"
     )
 
-    ekf_config_file_path = os.path.join(
-        get_package_share_directory("auto_robot_v2"), "config", "ekf.yaml")
+    ekf_config_file_path = os.path.join(package_dir, "config", "ekf.yaml")
 
     rviz_config_path = os.path.join(package_dir, "rviz", "navigation_rviz.rviz")
 
     # laser_filter用パラメータ
-    filter_params = os.path.join(package_dir, "config", "laser_filter.yaml")
+    laser_filter_params = os.path.join(package_dir, "config",
+                                       "laser_filter.yaml")
 
     # ノード定義
     sub_twist_node = Node(
@@ -67,21 +67,25 @@ def generate_launch_description():
                  name="rviz2",
                  parameters=[rviz_config_path])
 
-    # 静的tfの配信
-    # base_link -> laser
+    oversteps_node = Node(
+        package="auto_robot_v2",
+        executable="control_over_steps_action_node",
+    )
+
+    # ---- 静的tfの配信----
     static_tf_s2 = Node(
         package="tf2_ros",
         executable="static_transform_publisher",
         output="screen",
         arguments=[
-            "0.0",
-            "0.215",
-            "0.0",
-            "-1.5708",
-            "0.0",
-            "0.0",
-            "base_link",
-            "laser_s2",
+            "0.225",  #x
+            "-0.250",  #y
+            "0.0",  #z
+            "-3.1416",  #yaw
+            "0.0",  #pitch
+            "0.0",  #roll
+            "base_link",  #parent frame id
+            "laser_s2",  #child frame id
         ],
     )
 
@@ -90,10 +94,10 @@ def generate_launch_description():
         executable="static_transform_publisher",
         output="screen",
         arguments=[
+            "0.225",
+            "0.250",
             "0.0",
-            "-0.215",
-            "0.0",
-            "1.5708",
+            "3.1416",
             "0.0",
             "0.0",
             "base_link",
@@ -132,6 +136,7 @@ def generate_launch_description():
             "imu_link",
         ])
 
+    # ----Lidarの設定----
     lidar_launch_file_dir = os.path.join(
         get_package_share_directory("sllidar_ros2"), "launch")
 
@@ -141,34 +146,32 @@ def generate_launch_description():
     lidar_a3_launch_file_path = os.path.join(lidar_launch_file_dir,
                                              "sllidar_a3_launch.py")
 
-    # --- RPLIDAR S2 の設定 ---
     lidar_s2_setup_include = GroupAction(actions=[
         # 1. 名前空間を設定（これでトピックが /lidar_s2/scan になります）
         PushRosNamespace("lidar_s2"),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(lidar_s2_launch_file_path),
             launch_arguments={
-                "serial_port": "/dev/ttyUSB1",
+                "serial_port": "/dev/ttyUSB-S2",
                 "serial_baudrate": "1000000",  # S2の標準
                 "frame_id": "laser_s2",
                 "scan_mode": "",  # 10Hz(同期用)
-                "inverted": "false",
+                "inverted": "true",  #逆さ向きならばtrue
             }.items(),
         ),
     ])
 
-    # --- RPLIDAR A3 の設定 ---
     lidar_a3_setup_include = GroupAction(actions=[
         # 2. 名前空間を設定（これでトピックが /lidar_a3/scan になります）
         PushRosNamespace("lidar_a3"),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(lidar_a3_launch_file_path),
             launch_arguments={
-                "serial_port": "/dev/ttyUSB0",
+                "serial_port": "/dev/ttyUSB-A3",
                 "serial_baudrate": "256000",  # A3の標準
                 "frame_id": "laser_a3",
                 "scan_mode": "Sensitivity",  # 10Hz(同期用)
-                "inverted": "false",
+                "inverted": "true",
             }.items(),
         ),
     ])
@@ -185,13 +188,13 @@ def generate_launch_description():
             "scanTopic2": "/lidar_a3/scan",
             "show1": True,
             "show2": True,
-            "laser1Alpha": -90.0,
-            "laser1XOff": 0.0,
-            "laser1YOff": 0.125,
+            "laser1Alpha": -180.0,  #向き
+            "laser1XOff": 0.225,  #x方向位置
+            "laser1YOff": -0.250,  #y方向位置
             "laser1ZOff": 0.0,
-            "laser2Alpha": 90.0,
-            "laser2XOff": 0.0,
-            "laser2YOff": -0.125,
+            "laser2Alpha": 180.0,
+            "laser2XOff": 0.225,
+            "laser2YOff": 0.250,
             "laser2ZOff": 0.0,
             "laser1AngleMax": 180.0,
             "laser1AngleMin": -180.0,
@@ -219,8 +222,8 @@ def generate_launch_description():
             "use_inf": True,
         }],
         remappings=[
-            ("cloud_in", "/merged_cloud"),  # Mergerの出力を入れる
-            ("scan", "/scan_merged_raw"),  # フィルタ前のスキャンとして出力
+            ("cloud_in", "/merged_cloud"),  # 入力
+            ("scan", "/scan_merged_raw"),  # 出力 
         ],
     )
 
@@ -230,14 +233,15 @@ def generate_launch_description():
         package="laser_filters",
         executable="scan_to_scan_filter_chain",
         parameters=[
-            filter_params, {
+            laser_filter_params, {
                 "qos_overrides./scan.reliability": "best_effort"
             }
         ],
         output="screen",
-        remappings=[("scan", "/scan_merged_raw"),
-                    ("scan_filtered", "/scan_filtered")],
-        #                 入力              出力
+        remappings=[
+            ("scan", "/scan_merged_raw"),  # 入力　
+            ("scan_filtered", "/scan_filtered")  # 出力
+        ],
     )
 
     # controller server
@@ -276,6 +280,9 @@ def generate_launch_description():
         }],
     )
 
+    delayed_nodes = [oversteps_node]
+    delayed_launch_node = TimerAction(period=3.0, actions=delayed_nodes)
+
     ld.add_action(sub_twist_node)
     ld.add_action(pub_feedback_node)
     ld.add_action(joy2twist_node)
@@ -297,5 +304,7 @@ def generate_launch_description():
     ld.add_action(scan_merger_node)
     ld.add_action(pc_to_scan_node)
     ld.add_action(laser_filter_node)
+
+    ld.add_action(delayed_launch_node)
 
     return ld

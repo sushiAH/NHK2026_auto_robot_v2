@@ -2,7 +2,7 @@
 やり制御フロー
 経路追従でやりの前まで来る
 amclを無効化する
-フレームを浮かす
+フレームを浮かす&やりハンドを正面に
 odomを用いて前進する
 取得する
 odomを用いて後退する
@@ -44,6 +44,10 @@ sys.path.append(target_dir)
 from ah_python_can import *
 
 
+def calc_frame_height(dis_cm):
+    return int((360 / (45 * math.pi) / 0.088) * (dis_cm))
+
+
 # ----Config Params -----
 class SpearController(Node):
 
@@ -58,8 +62,31 @@ class SpearController(Node):
         )
 
         # publisherの設定
+        self.dyna_extpos_publisher = self.create_publisher(
+            DynaTarget, "/dyna_target_extpos", 10)
+
+        self.dyna_vel_publisher = self.create_publisher(DynaTarget,
+                                                        "/dyna_target_vel", 10)
+
         self.dyna_pos_publisher = self.create_publisher(DynaTarget,
                                                         "/dyna_target_pos", 10)
+
+        #やりハンド初期化(開く)
+        self.publish_dyna_pos(11, 0)
+        #----Params----
+        self.spear_frame_height = 210
+
+    def publish_dyna_extpos(self, id, target):
+        msg = DynaTarget()
+        msg.id = id
+        msg.target = target
+        self.dyna_extpos_publisher.publish(msg)
+
+    def publish_dyna_vel(self, id, target):
+        msg = DynaTarget()
+        msg.id = id
+        msg.target = target
+        self.dyna_vel_publisher.publish(msg)
 
     def publish_dyna_pos(self, id, target):
         msg = DynaTarget()
@@ -67,14 +94,16 @@ class SpearController(Node):
         msg.target = target
         self.dyna_pos_publisher.publish(msg)
 
+    def publish_dyna_twist(self, vx):
+        self.publish_dyna_vel(0, -vx)
+        self.publish_dyna_vel(1, vx)
+
     # ---- Action実行メインロジック
     async def execute_callback(self, goal_handle):
         req = goal_handle.request
         res = Spear.Result()
         success = False
-
-        if req.mode == 1:
-            success = await self.spaer()
+        success = await self.spaer()
 
         res.success = success
 
@@ -86,7 +115,34 @@ class SpearController(Node):
         return res
 
     async def spear(self):
-        pass
+        self.get_logger().info("やり取得動作を開始します。")
+
+        #フレームを上げる&やりハンドを正面に
+        self.publish_dyna_extpos(2, calc_frame_height(-spear_frame_height))
+        self.publish_dyna_extpos(3, calc_frame_height(spear_frame_height))
+        self.publish_dyna_pos(10, 0)
+        time.sleep(4.0)
+
+        #一定時間前に進む
+        self.publish_dyna_twist(100)
+        time.sleep(1.0)
+
+        #やりハンドで掴む
+        self.publish_dyna_pos(11, 0)
+        time.sleep(1.0)
+
+        #やりハンドを上向きに
+        self.publish_dyna_pos(10, 0)
+        time.sleep(1.0)
+
+        #一定時間後ろに進む
+        self.publish_dyna_twist(-100)
+        time.sleep(1.0)
+
+        self.publish_dyna_extpos(2, calc_frame_height(10))
+        self.publish_dyna_extpos(3, calc_frame_height(-10))
+
+        self.get_logger().info("やり取得動作を終了しました。待機します。")
 
 
 def main():

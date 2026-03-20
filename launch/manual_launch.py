@@ -1,7 +1,8 @@
 import os
+import time
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction, TimerAction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, PushRosNamespace
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -13,11 +14,16 @@ def generate_launch_description():
     package_dir = get_package_share_directory("auto_robot_v2")
 
     # ----Params----
-    ekf_config_file_path = os.path.join(
-        get_package_share_directory("auto_robot_v2"), "config", "ekf.yaml")
-    dyna_config_file_path = os.path.join(
-        get_package_share_directory("auto_robot_v2"), "config",
-        "dyna_params.yaml")
+    slam_params = os.path.join(package_dir, "config", "slam_params.yaml")
+
+    ekf_config_file_path = os.path.join(package_dir, "config", "ekf.yaml")
+
+    # laser_filter用パラメータ
+    laser_filter_params = os.path.join(package_dir, "config",
+                                       "laser_filter.yaml")
+
+    dyna_config_file_path = os.path.join(package_dir, "config",
+                                         "dyna_params.yaml")
 
     zenoh_bridge = ExecuteProcess(
         cmd=[
@@ -34,31 +40,26 @@ def generate_launch_description():
     move_on_steps_node = Node(
         package="auto_robot_v2",
         executable="move_on_steps_action_node",
-        output="screen",
     )
 
     box_arm_node = Node(
         package="auto_robot_v2",
         executable="control_box_arm_action_node",
-        output="screen",
     )
 
     correct_pos_on_steps_node = Node(
         package="auto_robot_v2",
         executable="correcting_pos_on_step_action_node",
-        output="screen",
     )
 
     oversteps_node = Node(
         package="auto_robot_v2",
         executable="control_over_steps_action_node",
-        output="screen",
     )
 
     robot_client_node = Node(
         package="auto_robot_v2",
         executable="robot_client_node",
-        output="screen",
     )
 
     subtwist_node = Node(
@@ -91,7 +92,8 @@ def generate_launch_description():
                          executable="publish_feedback_node",
                          parameters=[{
                              "port_name": "/dev/ttyACM0",
-                         }])
+                         }],
+                         output="screen")
 
     dyna_node = Node(package="ah_ros2_dynamixel",
                      executable="dyna_handler_node_v2",
@@ -126,8 +128,10 @@ def generate_launch_description():
             "imu_link",
         ])
 
+    delayed_nodes = [oversteps_node]
+    delayed_launch_node = TimerAction(period=3.0, actions=delayed_nodes)
+
     ld.add_action(dyna_node)
-    ld.add_action(oversteps_node)
     #ld.add_action(correct_pos_on_steps_node)
     #ld.add_action(move_on_steps_node)
     #ld.add_action(box_arm_node)
@@ -142,6 +146,7 @@ def generate_launch_description():
 
     ld.add_action(static_transform_publisher_imu_node)
     ld.add_action(static_transform_publisher_footprint_node)
+    ld.add_action(delayed_launch_node)
 
     #ld.add_action(robot_client_node)
 

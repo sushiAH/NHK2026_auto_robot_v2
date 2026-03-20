@@ -90,20 +90,19 @@ class RvizSplineFollower(Node):
             if i < len(smooth_pts) - 1:
                 next_x = float(smooth_pts[i + 1][0])
                 next_y = float(smooth_pts[i + 1][1])
-                yaw = math.atan2(next_y - y, next_x - x)
+                #yaw = math.atan2(next_y - y, next_x - x)  #全方向移動台車であれば、yawは指定しない
             else:
                 yaw = final_yaw
+                quat = R.from_euler("z", yaw).as_quat()
 
-            quat = R.from_euler("z", yaw).as_quat()
+                (
+                    pose.pose.orientation.x,
+                    pose.pose.orientation.y,
+                    pose.pose.orientation.z,
+                    pose.pose.orientation.w,
+                ) = quat
 
-            (
-                pose.pose.orientation.x,
-                pose.pose.orientation.y,
-                pose.pose.orientation.z,
-                pose.pose.orientation.w,
-            ) = quat
-
-            path.poses.append(pose)
+                path.poses.append(pose)
 
         return path
 

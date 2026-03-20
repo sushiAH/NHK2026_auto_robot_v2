@@ -55,7 +55,7 @@ CAN_BUS = can.interface.Bus(bustype="socketcan",
 
 # ----Config Params -----
 TOF_THRESHOLD_CLIMB = 200  # (210 - 200 = 10) < 100[mm]
-TOF_THRESHOLD_DESCEND = 200
+TOF_THRESHOLD_DESCEND = 150
 
 
 def calc_frame_height(dis_cm):
@@ -147,8 +147,8 @@ class OverStepsActionServer(Node):
         self.dyna_vel_publisher.publish(msg)
 
     def publish_dyna_twist(self, vx):
-        self.publish_dyna_vel(0, vx)
-        self.publish_dyna_vel(1, -vx)
+        self.publish_dyna_vel(0, -vx)
+        self.publish_dyna_vel(1, vx)
 
     def publish_twist(self, vx, vy, w):
         twist = Twist()
@@ -194,8 +194,8 @@ class OverStepsActionServer(Node):
 
         #フレーム上昇
         self.get_logger().info("フレーム上昇")
-        self.publish_dyna_extpos(2, calc_frame_height(-210))
-        self.publish_dyna_extpos(3, calc_frame_height(210))
+        self.publish_dyna_extpos(2, calc_frame_height(-300))
+        self.publish_dyna_extpos(3, calc_frame_height(300))
         time.sleep(4.0)
 
         #dynamixel前進
@@ -237,20 +237,27 @@ class OverStepsActionServer(Node):
 
         self.get_logger().info("段差降りアクションを開始します。")
 
+        self.publish_dyna_extpos(2, calc_frame_height(-10))
+        self.publish_dyna_extpos(3, calc_frame_height(10))
+        time.sleep(1.0)
+
         #前進
         self.publish_twist(0.5, 0, 0)
+        self.publish_dyna_twist(100)
 
         #tof2検知待ち
         while (self.tof2 <= TOF_THRESHOLD_DESCEND):
             time.sleep(0.1)
 
         #車体を止めて、前方の足を下げる
+        self.publish_dyna_twist(0)
         self.publish_twist(0, 0, 0)
-        self.publish_dyna_extpos(2, calc_frame_height(-210))
+        self.publish_dyna_extpos(2, calc_frame_height(-300))
         time.sleep(4.0)
 
         #dcモーターを前方に動かす
         self.publish_twist(0.5, 0, 0)
+        self.publish_dyna_twist(100)
 
         #tof4検知待ち
         while (self.tof4 <= TOF_THRESHOLD_DESCEND):
@@ -259,13 +266,13 @@ class OverStepsActionServer(Node):
         #車体を止めて、後方の足を下げる
         self.publish_twist(0, 0, 0)
         self.publish_dyna_twist(0)
-        self.publish_dyna_extpos(3, calc_frame_height(210))
+        self.publish_dyna_extpos(3, calc_frame_height(300))
         time.sleep(4.0)
 
-        #後ろ向きに直進する
+        #前向きに直進する
         self.publish_twist(0.5, 0, 0)
         self.publish_dyna_twist(100)
-        time.sleep(1.0)
+        time.sleep(2.0)
 
         #車体を停止し、フレーム高さをもとに戻す
         self.publish_twist(0, 0, 0)

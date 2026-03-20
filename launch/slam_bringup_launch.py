@@ -2,10 +2,11 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction, TimerAction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, PushRosNamespace
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+import time
 
 
 def generate_launch_description():
@@ -16,33 +17,24 @@ def generate_launch_description():
     # SLAM用パラメータ
     slam_params = os.path.join(package_dir, "config", "slam_params.yaml")
 
-    ekf_config_file_path = os.path.join(
-        get_package_share_directory("auto_robot_v2"), "config", "ekf.yaml")
+    ekf_config_file_path = os.path.join(package_dir, "config", "ekf.yaml")
 
     # laser_filter用パラメータ
     laser_filter_params = os.path.join(package_dir, "config",
                                        "laser_filter.yaml")
 
-    dyna_config_file_path = os.path.join(
-        get_package_share_directory("auto_robot_v2"), "config",
-        "dyna_params.yaml")
+    dyna_config_file_path = os.path.join(package_dir, "config",
+                                         "dyna_params.yaml")
 
     # ----ノード定義----
-    dyna_node = Node(package="ah_ros2_dynamixel",
-                     executable="dyna_handler_node",
-                     parameters=[{
-                         "port_name": "/dev/ttyUSB-Dynamixel",
-                     }])
+    joy_node = Node(
+        package="joy_linux",
+        executable="joy_linux_node",
+    )
 
     oversteps_node = Node(
         package="auto_robot_v2",
         executable="control_over_steps_action_node",
-        output="screen",
-    )
-
-    joy_node = Node(
-        package="joy_linux",
-        executable="joy_linux_node",
     )
 
     sub_twist_node = Node(
@@ -94,7 +86,7 @@ def generate_launch_description():
         output="screen",
         arguments=[
             "0.225",  #x
-            "-0.215",  #y
+            "-0.250",  #y
             "0.0",  #z
             "-3.1416",  #yaw
             "0.0",  #pitch
@@ -110,7 +102,7 @@ def generate_launch_description():
         output="screen",
         arguments=[
             "0.225",
-            "0.215",
+            "0.250",
             "0.0",
             "3.1416",
             "0.0",
@@ -205,12 +197,12 @@ def generate_launch_description():
             "show1": True,
             "show2": True,
             "laser1Alpha": -180.0,  #向き
-            "laser1XOff": 0.255,  #x方向位置
-            "laser1YOff": -0.125,  #y方向位置
+            "laser1XOff": 0.225,  #x方向位置
+            "laser1YOff": -0.250,  #y方向位置
             "laser1ZOff": 0.0,
             "laser2Alpha": 180.0,
-            "laser2XOff": 0.255,
-            "laser2YOff": 0.125,
+            "laser2XOff": 0.225,
+            "laser2YOff": 0.250,
             "laser2ZOff": 0.0,
             "laser1AngleMax": 180.0,
             "laser1AngleMin": -180.0,
@@ -260,18 +252,20 @@ def generate_launch_description():
         ],
     )
 
+    delayed_nodes = [oversteps_node]
+    delayed_launch_node = TimerAction(period=5.0, actions=delayed_nodes)
+
     ld.add_action(dyna_node)
-    ld.add_action(oversteps_node)
     ld.add_action(joy_node)
+    ld.add_action(joy2twist_node)
     ld.add_action(sub_twist_node)
     ld.add_action(pub_feedback_node)
-    ld.add_action(joy2twist_node)
-    ld.add_action(rviz2)
+    #ld.add_action(rviz2)
     ld.add_action(ekf_node)
     ld.add_action(slam_tool_box)
 
-    ld.add_action(static_tf_s2)
     ld.add_action(static_tf_a3)
+    ld.add_action(static_tf_s2)
     ld.add_action(static_transform_publisher_imu_node)
     ld.add_action(static_transform_publisher_footprint_node)
 
@@ -280,5 +274,6 @@ def generate_launch_description():
     ld.add_action(scan_merger_node)
     ld.add_action(pc_to_scan_node)
     ld.add_action(laser_filter_node)
+    ld.add_action(delayed_launch_node)
 
     return ld

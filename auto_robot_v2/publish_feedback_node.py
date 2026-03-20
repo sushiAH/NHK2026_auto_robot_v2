@@ -191,6 +191,7 @@ class feedback_publisher(Node):
         euler = tf_transformations.euler_from_quaternion(
             [self.q_x, self.q_y, self.q_z, self.q_w])
         yaw = euler[2]
+        self.get_logger().info(f"yaw{yaw}")
         alpha = np.deg2rad(self.y_enc_alpha)
         cos, sin = np.cos(yaw), np.sin(yaw)
 
@@ -200,8 +201,13 @@ class feedback_publisher(Node):
         vec = np.array([wheel_x_vel, wheel_y_vel, self.ang_z_vel])
         twist_vec = R @ vec
 
-        odom.twist.twist.linear.x = twist_vec[0]
-        odom.twist.twist.linear.y = twist_vec[1]
+        #odom.twist.twist.linear.x = twist_vec[0]
+        #odom.twist.twist.linear.y = twist_vec[1]
+        #odom.twist.twist.angular.z = 0.0
+
+        odom.twist.twist.linear.x = wheel_x_vel
+        odom.twist.twist.linear.y = wheel_y_vel - self.Lx * np.cos(
+            alpha) * self.ang_z_vel
         odom.twist.twist.angular.z = 0.0
 
         # 共分散(Twist)

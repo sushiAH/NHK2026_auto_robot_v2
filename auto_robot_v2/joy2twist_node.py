@@ -61,9 +61,9 @@ class Joy2Twist(Node):
         self.yaw_rad = 0
 
         # -----robot parameter-----
-        self.twist_x_gain = 1.0
-        self.twist_y_gain = 1.0
-        self.omega_gain = 1.0
+        self.twist_x_gain = 2.0
+        self.twist_y_gain = 2.0
+        self.omega_gain = 2.0
 
     def imu_callback(self, msg):
         q = msg.orientation

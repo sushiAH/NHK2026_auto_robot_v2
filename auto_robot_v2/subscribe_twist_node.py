@@ -80,11 +80,6 @@ class TwistSubscriber(Node):
         self.timer = self.create_timer(timer_period, self.write_to_motor)
 
     def twist_callback(self, msg):
-        """subscribe twist message, store twist in member value
-
-        Args:
-            msg (Twist): [twist message]
-        """
         self.linear_x = msg.linear.x
         self.linear_y = msg.linear.y
         self.w = msg.angular.z

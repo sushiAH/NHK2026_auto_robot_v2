@@ -40,18 +40,18 @@ def quaternion_to_yaw(x, y, w, z):
     return yaw
 
 
-def limit_p(p_value, limit_value_abs):
-    if (p_value > limit_value_abs):
+def limit_value(value, limit_value_abs):
+    if (value > limit_value_abs):
         return limit_value_abs
-    elif (p_value < -limit_value_abs):
+    elif (value < -limit_value_abs):
         return -limit_value_abs
 
-    return p_value
+    return value
 
 
 def calc_p(target, current, p_gain):
     p_value = (target - current) * p_gain
-    p_value = limit_p(p_value, 0.5)
+    p_value = limit_value(p_value, 0.5)
 
     return p_value
 
@@ -107,15 +107,10 @@ class OnStepsController(Node):
         self.y = pos.y
         self.yaw = math.degrees(yaw)
 
-    def publish_dyna_pos(self, id, target):
-        msg = DynaTarget()
-        msg.id = id
-        msg.target = target
-        self.dyna_pos_publisher.publish(msg)
-
-    def publish_twist(self, straight, w):
+    def publish_twist(self, vx, vy, w):
         twist = Twist()
-        twist.linear.x = float(straight)
+        twist.linear.x = float(vx)
+        twist.linear.y = float(vy)
         twist.angular.z = float(w)
         self.twist_publisher.publish(twist)
 
@@ -149,23 +144,21 @@ class OnStepsController(Node):
         #一定地点まで直進
         while not (is_in_threshold(target_x, self.x, 0.01)):
             p_value = calc_p(target_x, self.x, 0.5)
-            self.publish_twist(p_value, 0)
+            self.publish_twist(p_value, 0, 0)
             time.sleep(0.1)
-        self.publish_twist(0, 0)
 
         #その場で右回り
         while not (is_in_threshold(-90.0, self.yaw, 1)):
             p_value = calc_p(-90.0, self.yaw, 0.05)
-            self.publish_twist(0, p_value)
+            self.publish_twist(0, 0, p_value)
             time.sleep(0.1)
-        self.publish_twist(0, 0)
 
         #一定地点まで直進
         while not (is_in_threshold(target_y, self.y, 0.01)):
             p_value = calc_p(target_y, self.y, 0.5)
-            self.publish_twist(p_value, 0)
+            self.publish_twist(p_value, 0, 0)
             time.sleep(0.1)
-        self.publish_twist(0, 0)
+        self.publish_twist(0, 0, 0)
         self.get_logger().info("動作終了、待機します")
         return True
 
@@ -176,27 +169,24 @@ class OnStepsController(Node):
 
         self.get_logger().info("段上左動作を開始")
         #一定地点まで直進
-        self.publish_twist(0.1, 0)
         while not (is_in_threshold(target_x, self.x, 0.01)):
             p_value = calc_p(target_x, self.x, 0.5)
-            self.publish_twist(p_value, 0)
+            self.publish_twist(p_value, 0, 0)
             time.sleep(0.1)
-        self.publish_twist(0, 0)
 
         #その場で左回り
         while not (is_in_threshold(90.0, self.yaw, 1)):
             p_value = calc_p(90.0, self.yaw, 0.05)
-            self.publish_twist(0, p_value)
+            self.publish_twist(0, 0, p_value)
             time.sleep(0.1)
-        self.publish_twist(0, 0)
 
         #一定地点まで直進
         while not (is_in_threshold(target_y, self.y, 0.01)):
             p_value = calc_p(target_y, self.y, 0.5)
-            self.publish_twist(p_value, 0)
+            self.publish_twist(p_value, 0, 0)
             time.sleep(0.1)
 
-        self.publish_twist(0, 0)
+        self.publish_twist(0, 0, 0)
         self.get_logger().info("動作終了、待機します")
 
         return True

@@ -1,44 +1,61 @@
 slam_toolbox:
   ros__parameters:
-
-    # ========================================================
-    # 1. 動作モードとフレーム設定 (最重要)
-    # ========================================================
+    # --------------------------------------------------------
+    # 1. フレーム・トピック設定
+    # --------------------------------------------------------
     odom_frame: odom
     map_frame: map
-    base_frame: base_link  # 【変更点】デフォルトはbase_footprintの場合が多いので注意！
-    scan_topic: /scan      # LaunchでRemapしていればこのままでOK
-    mode: mapping          # 地図を作る時は 'mapping' (位置合わせだけなら 'localization')
+    base_frame: base_link        # URDFのルートリンク名と一致させること
+    scan_topic: /scan
+    mode: mapping                # 地図生成モード (自己位置推定のみなら 'localization')
 
-    # ========================================================
-    # 2. 地図更新のしきい値 (テスト中は小さくする)
-    # ========================================================
-    # ロボットがこれだけ動かないと地図更新処理が走らない
-    minimum_travel_distance: 0.01   # 【推奨】テスト用: 0.5 -> 0.1 (m)
-    minimum_travel_heading: 0.01    # 【推奨】テスト用: 0.5 -> 0.1 (rad)
-    
-    # 処理負荷を下げるための設定
-    transform_publish_period: 0.01 # 地図TFの発行周期 (秒)
-    map_update_interval: 0.1       # 地図配信の間隔 (秒)
-    resolution: 0.05               # グリッドサイズ (5cm)
-    
-    # LiDARのスペックに合わせる
-    max_laser_range: 20.0          # LiDARの最大距離 (m)
-    min_laser_range: 0.0           # 最小距離
-    
-    # ========================================================
-    # 3. 内部アルゴリズム設定 (基本はいじらなくてOK)
-    # ========================================================
-    # Solver Params
+    # --------------------------------------------------------
+    # 2. 地図更新のしきい値
+    # --------------------------------------------------------
+    # ロボットがこれだけ動いた時だけスキャンマッチング・地図更新が走る
+    # テスト中は小さく、本番マッピングでは大きくするとCPU負荷が下がる
+    minimum_travel_distance: 0.3      # [m]   テスト時: 0.01
+    minimum_travel_heading: 0.26      # [rad] テスト時: 0.01 (~15度)
+
+    # --------------------------------------------------------
+    # 3. 処理・発行周期
+    # --------------------------------------------------------
+    transform_publish_period: 0.01    # TF発行周期 [秒] = 100Hz (小さいほどNav2が安定)
+    map_update_interval: 0.1          # 地図配信間隔 [秒] = 10Hz
+    resolution: 0.05                  # グリッド解像度 [m/cell] (精度重視: 0.03 / 軽量化: 0.1)
+    tf_buffer_duration: 30.0          # TFバッファ保持時間 [秒] (bag再生・シミュレーションで重要)
+
+    # --------------------------------------------------------
+    # 4. LiDARレンジ設定 (使用するLiDARのスペックに合わせること)
+    # --------------------------------------------------------
+    max_laser_range: 20.0             # LiDARの最大距離 [m]
+    min_laser_range: 0.15             # 近距離ノイズ除去のため0より大きい値を推奨 [m]
+
+    # --------------------------------------------------------
+    # 5. スキャンバッファ設定
+    # --------------------------------------------------------
+    scan_buffer_size: 10                       # マッチングに使うスキャン履歴数 (1は不安定、10〜20推奨)
+    scan_buffer_maximum_scan_distance: 10.0    # バッファに入れるスキャンの最大距離 [m]
+
+    # --------------------------------------------------------
+    # 6. スキャンマッチング
+    # --------------------------------------------------------
+    use_scan_matching: true
+    use_scan_barycenter: true
+
+    # --------------------------------------------------------
+    # 7. ループクロージャー設定
+    # --------------------------------------------------------
+    do_loop_closing: true
+    loop_search_maximum_distance: 3.0      # ループ候補を探す範囲 [m] (環境の広さに合わせて調整)
+    loop_match_minimum_response_fine: 0.45
+    loop_match_maximum_variance_coarse: 3.0
+
+    # --------------------------------------------------------
+    # 8. ソルバー設定 (基本はいじらなくてOK)
+    # --------------------------------------------------------
     solver_plugin: solver_plugins::CeresSolver
     ceres_linear_solver: SPARSE_NORMAL_CHOLESKY
     ceres_preconditioner: SCHUR_JACOBI
     ceres_trust_strategy: LEVENBERG_MARQUARDT
     ceres_dogleg_type: TRADITIONAL_DOGLEG
-    ceres_loss_function: None
-
-    # Loop Closure (ループ閉じ込み) Params
-    do_loop_closing: true
-    use_scan_barycenter: true
-    check_min_dist_and_heading_precisely: false
-    scan_buffer_size: 1
