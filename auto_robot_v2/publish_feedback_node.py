@@ -57,11 +57,11 @@ class feedback_publisher(Node):
         self.tof4_pub = self.create_publisher(UInt16, "/tof_4", 10)
 
         # recv_feedbackの割り込み設定
-        self.recv_feedback_timer = self.create_timer(0.005, self.recv_feedback)
-        self.publish_timer = self.create_timer(0.005, self.publish_feedback)
+        self.recv_feedback_timer = self.create_timer(0.007, self.recv_feedback)
 
         # esp32 serialの設定
         self.ser = serial.Serial(port=port_name, baudrate=10000000, timeout=0.0)
+        self.ser.low_latency = True
         # メンバ変数初期化
         self.mcu_timestamp_millis = 0
 
@@ -87,30 +87,6 @@ class feedback_publisher(Node):
         # ---- Params -----
         self.Lx = 0.313  #中心からy軸odomまでの距離[m]
         self.y_enc_alpha = 16.7  #y方向エンコーダーの中心からの角度 [degree]
-
-    def recv_feedback(self):
-        struct_format = "<BIfffffffffHHHHB"
-        packet = receive_packet(struct_format, self.ser)
-
-        if packet != None:
-            self.mcu_timestamp_millis = packet[1]
-
-            self.q_w = packet[2]
-            self.q_x = packet[3]
-            self.q_y = packet[4]
-            self.q_z = packet[5]
-
-            self.ang_x_vel = packet[6]
-            self.ang_y_vel = packet[7]
-            self.ang_z_vel = packet[8]
-
-            self.enc_x_vel = packet[9]  #[rot/s]
-            self.enc_y_vel = packet[10]
-
-            self.tof1 = packet[11]  #前方
-            self.tof2 = packet[12]
-            self.tof3 = packet[13]
-            self.tof4 = packet[14]  #後方
 
     def publish_feedback(self):
         current_time = self.get_clock().now()
@@ -188,23 +164,26 @@ class feedback_publisher(Node):
         # 速度情報 (角速度は0)
         wheel_x_vel = self.enc_x_vel * 2 * math.pi * self.wheel_radius  # [m/s]
         wheel_y_vel = -(self.enc_y_vel * 2 * math.pi * self.wheel_radius)
-        euler = tf_transformations.euler_from_quaternion(
-            [self.q_x, self.q_y, self.q_z, self.q_w])
-        yaw = euler[2]
-        self.get_logger().info(f"yaw{yaw}")
         alpha = np.deg2rad(self.y_enc_alpha)
-        cos, sin = np.cos(yaw), np.sin(yaw)
 
-        R = np.array([[cos, -sin, self.Lx * np.cos(alpha) * sin],
-                      [sin, cos, -self.Lx * np.cos(alpha) * cos]])
+        #euler = tf_transformations.euler_from_quaternion(
+        # ---- ODOM計算式(ekfを使う場合は不要)
+        #    [self.q_x, self.q_y, self.q_z, self.q_w])
+        #yaw = euler[2]
+        ##self.get_logger().info(f"yaw{yaw}")
+        #cos, sin = np.cos(yaw), np.sin(yaw)
 
-        vec = np.array([wheel_x_vel, wheel_y_vel, self.ang_z_vel])
-        twist_vec = R @ vec
+        #R = np.array([[cos, -sin, self.Lx * np.cos(alpha) * sin],
+        #              [sin, cos, -self.Lx * np.cos(alpha) * cos]])
+
+        #vec = np.array([wheel_x_vel, wheel_y_vel, self.ang_z_vel])
+        #twist_vec = R @ vec
 
         #odom.twist.twist.linear.x = twist_vec[0]
         #odom.twist.twist.linear.y = twist_vec[1]
         #odom.twist.twist.angular.z = 0.0
 
+        odom.header.stamp = current_time.to_msg()
         odom.twist.twist.linear.x = wheel_x_vel
         odom.twist.twist.linear.y = wheel_y_vel - self.Lx * np.cos(
             alpha) * self.ang_z_vel
@@ -288,6 +267,34 @@ class feedback_publisher(Node):
         self.imu_pub.publish(imu)
 
         # tfはsensor fusionパッケージで出力する
+
+    def recv_feedback(self):
+        struct_format = "<BIfffffffffHHHHB"
+        packet = receive_packet(struct_format, self.ser)
+        if packet is None:
+            return
+
+        self.mcu_timestamp_millis = packet[1]
+
+        self.q_w = packet[2]
+        self.q_x = packet[3]
+        self.q_y = packet[4]
+        self.q_z = packet[5]
+
+        self.ang_x_vel = packet[6]
+        self.ang_y_vel = packet[7]
+        self.ang_z_vel = packet[8]
+
+        self.enc_x_vel = packet[9]  #[rot/s]
+        self.enc_y_vel = packet[10]
+
+        self.tof1 = packet[11]  #前方
+        self.tof2 = packet[12]
+        self.tof3 = packet[13]
+
+        self.tof4 = packet[14]  #後方
+
+        self.publish_feedback()
 
 
 def main():

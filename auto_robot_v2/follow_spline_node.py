@@ -102,7 +102,7 @@ class RvizSplineFollower(Node):
                     pose.pose.orientation.w,
                 ) = quat
 
-                path.poses.append(pose)
+            path.poses.append(pose)
 
         return path
 
@@ -111,7 +111,7 @@ class RvizSplineFollower(Node):
             return
         goal_msg = FollowPath.Goal()
         goal_msg.path = path_msg
-        goal_msg.controller.id = "FollowPath"
+        goal_msg.controller_id = "FollowPath"
         self._action_client.send_goal_async(goal_msg)
 
 

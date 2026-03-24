@@ -40,7 +40,10 @@ setup(
             "move_on_steps_action_node = auto_robot_v2.move_on_steps_action_node:main",
             "detect_aruco_action_node = auto_robot_v2.detect_aruco_action_node:main",
             "is_vgoal_action_node = auto_robot_v2.is_vgoal_action_node:main",
+            "omni_pure_pursuit_action_node = auto_robot_v2.omni_pure_pursuit_action_node:main",
+            "omni_pure_pursuit_action_node_v2 = auto_robot_v2.omni_pure_pursuit_action_node_v2:main",
             "robot_client_node = auto_robot_v2.robot_client_node:main",
+            "record_path_node = auto_robot_v2.record_path_node:main",
         ],
     },
 )

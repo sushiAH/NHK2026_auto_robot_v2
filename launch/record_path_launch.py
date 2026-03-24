@@ -1,15 +1,3 @@
-"""odom_publisher
-twist_subscriber
-joy_linux
-rviz2
-nav2
-static tf lidar
-static tf footprint
-laser filter
-scan Merger
-pc to scan
-"""
-
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -41,9 +29,12 @@ def generate_launch_description():
 
     dyna_config_file_path = os.path.join(package_dir, "config",
                                          "dyna_params.yaml")
-    pure_pursuit_config_path = os.path.join(package_dir, "config",
-                                            "omni_pure_pursuit.yaml")
     # ノード定義
+    joy_node = Node(
+        package="joy_linux",
+        executable="joy_linux_node",
+    )
+
     sub_twist_node = Node(
         package="auto_robot_v2",
         executable="subscribe_twist_node",
@@ -66,19 +57,15 @@ def generate_launch_description():
         parameters=[ekf_config_file_path],
     )
 
-    rviz2 = Node(package="rviz2",
-                 executable="rviz2",
-                 name="rviz2",
-                 parameters=[rviz_config_path])
-
     oversteps_node = Node(
         package="auto_robot_v2",
         executable="control_over_steps_action_node",
     )
 
-    pure_pursuit_node = Node(package="auto_robot_v2",
-                             executable="omni_pure_pursuit_action_node",
-                             parameters=[pure_pursuit_config_path])
+    record_path_node = Node(
+        package="auto_robot_v2",
+        executable="record_path_node",
+    )
 
     dyna_node = Node(package="ah_ros2_dynamixel",
                      executable="dyna_handler_node_v2",
@@ -256,15 +243,6 @@ def generate_launch_description():
         ],
     )
 
-    # controller server
-    # pure_persuitなど
-    controller_server_node = Node(
-        package="nav2_controller",
-        executable="controller_server",
-        output="screen",
-        parameters=[nav2_params_path],
-    )
-
     # map server node
     map_server_node = Node(
         package="nav2_map_server",
@@ -303,11 +281,11 @@ def generate_launch_description():
     ld.add_action(joy2twist_node)
     #ld.add_action(rviz2)
     ld.add_action(ekf_node)
-    ld.add_action(pure_pursuit_node)
+    ld.add_action(joy_node)
+    ld.add_action(record_path_node)
 
     ld.add_action(amcl_node)
     ld.add_action(map_server_node)
-    #ld.add_action(controller_server_node)
     ld.add_action(lifecycle_manager_node)
 
     ld.add_action(static_tf_s2)
