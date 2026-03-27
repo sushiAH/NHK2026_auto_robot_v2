@@ -22,7 +22,7 @@ class PathRecorder(Node):
 
         self.declare_parameter(
             'directory', '~/NHK2026_auto_robot_v2/src/auto_robot_v2/path/')
-        self.declare_parameter('dist_threshold', 0.05)
+        self.declare_parameter('dist_threshold', 0.01)
 
         # 保存ディレクトリの準備
         self.save_dir = os.path.expanduser(
@@ -112,8 +112,8 @@ class PathRecorder(Node):
         self.get_logger().info(f"【保存成功】 {filename}")
 
 
-def main():
-    rclpy.init()
+def main(args=None):
+    rclpy.init(args=args)
     node = PathRecorder()
     try:
         rclpy.spin(node)

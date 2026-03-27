@@ -32,7 +32,7 @@ class RvizSplineFollower(Node):
                                                  self.goal_callback, 10)
 
         self.path_pub = self.create_publisher(Path, "/visual_spline_path", 10)
-        self._action_client = ActionClient(self, FollowPath, "follow_path")
+        self._action_client = ActionClient(self, FollowPath, "follow_path_map")
 
         self.get_logger().info("RVizでpublish_pointを3回クリックしてください")
 
@@ -115,8 +115,8 @@ class RvizSplineFollower(Node):
         self._action_client.send_goal_async(goal_msg)
 
 
-def main():
-    rclpy.init()
+def main(args=None):
+    rclpy.init(args=args)
     rclpy.spin(RvizSplineFollower())
     rclpy.shutdown()
 

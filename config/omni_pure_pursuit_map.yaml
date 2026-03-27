@@ -1,0 +1,23 @@
+pure_pursuit_map:
+  ros__parameters:
+    global_frame: "map"
+    robot_frame: "base_link"
+    action_name: "follow_path_map"
+
+    max_linear_vel: 4.0
+    accel_limit: 4.0
+
+    min_lookahead_dist: 0.2
+    lookahead_gain: 0.2
+
+    max_angular_vel: 1.0
+    kp_yaw: 2.0
+
+    goal_tolerance: 0.05
+
+    v_start_min: 1.5
+    decel_start_dist: 0.4
+    control_frequency: 20.0
+
+    # --- その他設定（必要に応じてプログラム側で追加・利用可能） ---
+    use_sim_time: False

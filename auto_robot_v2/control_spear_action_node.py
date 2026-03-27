@@ -6,7 +6,9 @@ amclを無効化する
 odomを用いて前進する
 取得する
 odomを用いて後退する
+フレームを下げる
 開始位置を指定してamclを有効化する
+arucoの待機
 
 
 このプログラムには、
@@ -71,10 +73,14 @@ class SpearController(Node):
         self.dyna_pos_publisher = self.create_publisher(DynaTarget,
                                                         "/dyna_target_pos", 10)
 
-        #やりハンド初期化(開く)
-        self.publish_dyna_pos(11, 0)
         #----Params----
+        self.spear_arm_pos_list = [1674, 2660]  #上、下
+        self.spear_hand_pos_list = [1440, 350]  #開く、閉じる
         self.spear_frame_height = 210
+
+        #やりハンド初期化
+        self.publish_dyna_pos(10, self.spear_arm_pos_list[0])
+        self.publish_dyna_pos(11, self.spear_hand_pos_list[0])
 
     def publish_dyna_extpos(self, id, target):
         msg = DynaTarget()
@@ -120,7 +126,8 @@ class SpearController(Node):
         #フレームを上げる&やりハンドを正面に
         self.publish_dyna_extpos(2, calc_frame_height(-spear_frame_height))
         self.publish_dyna_extpos(3, calc_frame_height(spear_frame_height))
-        self.publish_dyna_pos(10, 0)
+        self.publish_dyna_pos(10, self.spear_arm_pos_list[1])  #下
+        self.publish_dyna_pos(11, self.spear_hand_pos_list[0])  #開
         time.sleep(4.0)
 
         #一定時間前に進む
@@ -128,25 +135,27 @@ class SpearController(Node):
         time.sleep(1.0)
 
         #やりハンドで掴む
-        self.publish_dyna_pos(11, 0)
+        self.publish_dyna_pos(11, self.spear_hand_pos_list[1])  #閉
         time.sleep(1.0)
 
-        #やりハンドを上向きに
-        self.publish_dyna_pos(10, 0)
+        #やり回転を上向きに
+        self.publish_dyna_pos(10, self.spear_arm_pos_list[0])  #上
         time.sleep(1.0)
 
         #一定時間後ろに進む
         self.publish_dyna_twist(-100)
         time.sleep(1.0)
 
+        #フレームを下げる＆ハンド開く
         self.publish_dyna_extpos(2, calc_frame_height(10))
         self.publish_dyna_extpos(3, calc_frame_height(-10))
+        self.publish_dyna_pos(11, self.spear_arm_pos_list[0])  #開
 
         self.get_logger().info("やり取得動作を終了しました。待機します。")
 
 
-def main():
-    rclpy.init()
+def main(args=None):
+    rclpy.init(args=args)
     node = SpearController()
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(node)

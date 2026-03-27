@@ -84,8 +84,8 @@ class IsVgoalChecker(Node):
         return True
 
 
-def main():
-    rclpy.init()
+def main(args=None):
+    rclpy.init(args=args)
     node = IsVgoalChecker()
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(node)

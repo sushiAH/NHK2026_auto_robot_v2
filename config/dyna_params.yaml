@@ -13,24 +13,30 @@ dyna_handler_node:
         operating_mode: 4
       id4:
         operating_mode: 3
-        profile_vel: 50
-        profile_accel: 50
+        profile_vel: 30
+        profile_accel: 30
       id5:
         operating_mode: 3
+        profile_vel: 30
+        profile_accel: 30
       id6:
         operating_mode: 3
+        profile_vel: 30
+        profile_accel: 30
       id7:
         operating_mode: 3
-        profile_vel: 50
-        profile_accel: 50
+        profile_vel: 30
+        profile_accel: 30
       id8:
         operating_mode: 3
+        profile_vel: 30
+        profile_accel: 30
       id9:
         operating_mode: 3
+        profile_vel: 30
+        profile_accel: 30
       id10:
         operating_mode: 3
-        profile_vel: 50
-        profile_accel: 50
       id11:
         operating_mode: 3
 

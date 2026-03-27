@@ -43,8 +43,9 @@ class PoseCorrectionServer(Node):
         self.dyna_pos_publisher = self.create_publisher(DynaTarget,
                                                         "/dyna_target_pos", 10)
 
-        #初期化(上向き)
-        self.publish_dyna_pos(10, 1010)
+        #----Params----
+        self.spear_arm_pos_list = [1674, 2660]  #上、下
+        self.spear_hand_pos_list = [1440, 350]  #開く、閉じる
 
     def publish_dyna_pos(self, id, target):
         msg = DynaTarget()
@@ -55,7 +56,7 @@ class PoseCorrectionServer(Node):
     async def execute_callback(self, goal_handle):
         self.get_logger().info("自己位置を補正します")
         #下を向く
-        self.publish_dyna_pos(10, 1960)
+        self.publish_dyna_pos(10, self.spear_arm_pos_list[1])
         time.sleep(2.0)
 
         #初期化座標の取得
@@ -82,15 +83,15 @@ class PoseCorrectionServer(Node):
         time.sleep(1.0)
 
         #上を向く
-        self.publish_dyna_pos(10, 1010)
+        self.publish_dyna_pos(10, self.spear_arm_pos_list[0])
         self.get_logger().info("動作終了、待機します")
         goal_handle.succeed()
 
         return PoseCorrection.Result(success=True)
 
 
-def main():
-    rclpy.init()
+def main(args=None):
+    rclpy.init(args=args)
     node = PoseCorrectionServer()
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(node)

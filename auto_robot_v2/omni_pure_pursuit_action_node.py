@@ -31,6 +31,10 @@ class OmniPurePursuitActionServer(Node):
         self.declare_parameter("kp_linear", 1.5)
         self.declare_parameter("kp_yaw", 2.0)
         self.declare_parameter("control_frequency", 20.0)
+        self.declare_parameter("action_name", "follow_path")
+
+        action_name = self.get_parameter(
+            "action_name").get_parameter_value().string_value
 
         # --- TF & 状態管理 ---
         self.tf_buffer = Buffer()
@@ -44,7 +48,7 @@ class OmniPurePursuitActionServer(Node):
         self._action_server = ActionServer(
             self,
             FollowPath,
-            'follow_path',
+            action_name,
             execute_callback=self.execute_callback,
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,

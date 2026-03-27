@@ -1,5 +1,8 @@
-omni_pure_pursuit_action_server:
+pure_pursuit_odom:
   ros__parameters:
+    global_frame: "odom"
+    robot_frame: "base_link"
+    action_name: "follow_path_odom"
     # --- 追従コア設定 ---
     # 注視距離：大きいと滑らかになり、小さいと経路に忠実になります（0.4〜0.6推奨）
     lookahead_dist: 0.4

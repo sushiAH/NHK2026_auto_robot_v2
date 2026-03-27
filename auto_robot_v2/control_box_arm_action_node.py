@@ -12,8 +12,11 @@
     ボックスがおいてある段差が上か、下か
         置く動作、取る動作
 
+左から取る
+
+
 Vゴール
-　　左で上段
+　　左で上段 
     右で中段
     
 dynamixel_id
@@ -90,35 +93,44 @@ class BoxArmController(Node):
         self.dyna_pos_publisher = self.create_publisher(DynaTarget,
                                                         "/dyna_target_pos", 10)
 
-        send_packet_1byte(0x020, 0, 4, CAN_BUS)  # set_operating
-        send_packet_4byte(0x020, 3, 0, CAN_BUS)
+        #吸引ポンプ立ち上げ
+        set_pwm_mode(0x020, CAN_BUS)
+        set_pwm_mode(0x021, CAN_BUS)
 
-        #初期化
-        self.publish_dyna_pos(4, 1500)
-        self.publish_dyna_pos(5, 1500)
-        self.publish_dyna_pos(6, 1500)
-
-        self.publish_dyna_pos(7, 1500)
-        self.publish_dyna_pos(8, 1500)
-        self.publish_dyna_pos(9, 1500)
+        set_goal_pwm(0x020, 0, CAN_BUS)
+        set_goal_pwm(0x021, 0, CAN_BUS)
 
         # ----Params----
         # dyhnamixel_idリスト
-        self.left_box_arm_ids = [4, 5, 6]
-        self.right_box_arm_ids = [7, 8, 9]
+        self.left_box_arm_ids = [4, 5, 6, 0x020]
+        self.right_box_arm_ids = [7, 8, 9, 0x021]
+
+        #初期化
+        left_init_pos_list = [3000, 980, 1060]
+        right_init_pos_list = [1900, 3600, 3000]
+
+        #left
+        self.publish_dyna_pos(self.left_box_arm_ids[0], left_init_pos_list[0])
+        self.publish_dyna_pos(self.left_box_arm_ids[1], left_init_pos_list[1])
+        self.publish_dyna_pos(self.left_box_arm_ids[2], left_init_pos_list[2])
+        #right
+        self.publish_dyna_pos(self.right_box_arm_ids[0], right_init_pos_list[0])
+        self.publish_dyna_pos(self.right_box_arm_ids[1], right_init_pos_list[1])
+        self.publish_dyna_pos(self.right_box_arm_ids[2], right_init_pos_list[2])
 
         #ボックス取得時
-        # ボックスが下にあるときの位置リスト
-        self.left_lift_under_pos_list = [0, 0, 0, 0, 0]  #左持ち上げ
-        self.left_put_under_pos_list = [0, 0, 0, 0, 0]  #左置く
-        self.right_lift_under_pos_list = [0, 0, 0, 0, 0]  #右持ち上げ
-        self.right_put_under_pos_list = [0, 0, 0, 0, 0]  #右置く
 
         #ボックスが上にあるときの位置リスト
-        self.left_lift_above_pos_list = [0, 0, 0, 0, 0]
-        self.left_put_above_pos_list = [0, 0, 0, 0, 0]
-        self.right_lift_above_pos_list = [0, 0, 0, 0, 0]
-        self.right_put_above_pos_list = [0, 0, 0, 0, 0]
+        self.left_lift_above_pos_list = [1000, 3000, 1200, 3000, 980, 1800]
+        self.left_put_above_pos_list = [0, 0, 0, 0, 0, 0]
+        self.right_lift_above_pos_list = [3000, 3200, 2800, 1900, 3600, 2000]
+        self.right_put_above_pos_list = [0, 0, 0, 0, 0, 0]
+
+        # ボックスが下にあるときの位置リスト
+        self.left_lift_under_pos_list = [0, 0, 0, 0, 0, 0]  #左持ち上げ
+        self.left_put_under_pos_list = [0, 0, 0, 0, 0, 0]  #左置く
+        self.right_lift_under_pos_list = [0, 0, 0, 0, 0, 0]  #右持ち上げ
+        self.right_put_under_pos_list = [0, 0, 0, 0, 0, 0]  #右置く
 
         #Vゴール時
         self.vgoal_middle_pos_list = [0, 0, 0, 0, 0, 0]
@@ -138,27 +150,27 @@ class BoxArmController(Node):
 
         #ボックス上
         if req.mode == 1:  #左持ち上げ
-            success = await self.put_box(self.left_box_arm_ids,
-                                         self.left_lift_above_pos_list)
+            success = await self.lift_box(self.left_box_arm_ids,
+                                          self.left_lift_above_pos_list)
         elif req.mode == 2:  #左置く
             success = await self.put_box(self.left_box_arm_ids,
                                          self.left_put_above_pos_list)
         elif req.mode == 3:  #右持ち上げ
-            success = await self.put_box(self.right_box_arm_ids,
-                                         self.right_lift_above_pos_list)
+            success = await self.lift_box(self.right_box_arm_ids,
+                                          self.right_lift_above_pos_list)
         elif req.mode == 4:  #右置く
             success = await self.put_box(self.right_box_arm_ids,
                                          self.right_put_above_pos_list)
         #ボックス下
         elif req.mode == 5:  #左持ち上げ
-            success = await self.put_box(self.left_box_arm_ids,
-                                         self.left_lift_under_pos_list)
+            success = await self.lift_box(self.left_box_arm_ids,
+                                          self.left_lift_under_pos_list)
         elif req.mode == 6:  #左置く
             success = await self.put_box(self.left_box_arm_ids,
                                          self.left_put_under_pos_list)
         elif req.mode == 7:  #右持ち上げ
-            success = await self.put_box(self.right_box_arm_ids,
-                                         self.right_lift_under_pos_list)
+            success = await self.lift_box(self.right_box_arm_ids,
+                                          self.right_lift_under_pos_list)
         elif req.mode == 8:  #右置く
             success = await self.put_box(self.right_box_arm_ids,
                                          self.right_put_under_pos_list)
@@ -191,7 +203,7 @@ class BoxArmController(Node):
         self.publish_dyna_pos(ids[0], pos_list[3])
         self.publish_dyna_pos(ids[1], pos_list[4])
         self.publish_dyna_pos(ids[2], pos_list[5])
-        send_packet_4byte(0x020, 3, 0, CAN_BUS)
+        set_goal_pwm(ids[3], 0, CAN_BUS)
         time.sleep(2.0)
 
         self.get_logger().info("動作終了、待機します")
@@ -204,7 +216,7 @@ class BoxArmController(Node):
         self.publish_dyna_pos(ids[0], pos_list[0])
         self.publish_dyna_pos(ids[1], pos_list[1])
         self.publish_dyna_pos(ids[2], pos_list[2])
-        send_packet_4byte(0x020, 3, 1000, CAN_BUS)
+        set_goal_pwm(ids[3], 1000, CAN_BUS)
         time.sleep(4.0)
 
         #アームを上げる&縮める&角度調整
@@ -219,31 +231,39 @@ class BoxArmController(Node):
     async def v_goal(self, ids, pos_list):
         self.get_logger().info("v_goal動作を開始します")
 
-        #アームを下げる＆先端調整&伸ばす＆吸引オン
+        #アームを下げる＆先端調整&伸ばす
         self.publish_dyna_pos(ids[0], pos_list[0])
         self.publish_dyna_pos(ids[1], pos_list[1])
         self.publish_dyna_pos(ids[2], pos_list[2])
-        send_packet_4byte(0x020, 3, 1000, CAN_BUS)
         time.sleep(4.0)
 
         #アームを上げる&縮める&角度調整
         self.publish_dyna_pos(ids[0], pos_list[3])
         self.publish_dyna_pos(ids[1], pos_list[4])
         self.publish_dyna_pos(ids[2], pos_list[5])
+        set_goal_pwm(ids[3], 0, CAN_BUS)
         time.sleep(2.0)
 
         self.get_logger().info("動作終了、待機します")
         return True
 
 
-def main():
-    rclpy.init()
+def main(args=None):
+    rclpy.init(args=args)
     node = BoxArmController()
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(node)
     executor.spin()
     rclpy.shutdown()
 
+
+def stop():
+    """停止モードにする"""
+    set_stop_mode(0x020, CAN_BUS)
+    set_stop_mode(0x021, CAN_BUS)
+
+
+atexit.register(stop)
 
 if __name__ == "__main__":
     main()
