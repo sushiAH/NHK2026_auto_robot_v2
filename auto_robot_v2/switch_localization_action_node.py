@@ -1,6 +1,6 @@
 import rclpy
-import math
 from rclpy.node import Node
+import math
 from rclpy.action import ActionServer
 from rclpy.callback_groups import ReentrantCallbackGroup
 from geometry_msgs.msg import PoseWithCovarianceStamped
@@ -9,6 +9,12 @@ from lifecycle_msgs.msg import Transition
 from auto_robot_interfaces_v2.action import SwitchLoc
 from nav2_msgs.srv import LoadMap
 import asyncio
+import time
+"""
+mode 
+    1: 無効化
+    2: 有効化
+"""
 
 
 class LocalizationManager(Node):
@@ -43,15 +49,14 @@ class LocalizationManager(Node):
 
         #ekf単体
         if req.mode == 1:
-            success, message = await self.deactivate_lidar_localization()
+            success = await self.deactivate_lidar_localization()
 
         #ekf + lidar
         elif req.mode == 2:
-            success, message = await self.activate_lidar_localization(
+            success = await self.activate_lidar_localization(
                 req.x, req.y, req.yaw, req.map_path)
 
         res.success = success
-        res.message = message
 
         if success:
             goal_handle.succeed()
@@ -82,7 +87,7 @@ class LocalizationManager(Node):
     async def deactivate_lidar_localization(self):
         if not await self.change_lifecycle_state(
                 Transition.TRANSITION_DEACTIVATE):
-            return False, "Failed to deactivate AMCL via lifecycle"
+            return False
         return True
 
     #amcl有効化
@@ -91,12 +96,12 @@ class LocalizationManager(Node):
         await self.load_new_map(map_path)
         if not await self.change_lifecycle_state(Transition.TRANSITION_ACTIVATE
                                                 ):
-            return False, "Failed to activate AMCL via lifecycle"
-        await asyncio.sleep(0.5)
+            return False
+        time.sleep(1.0)
 
         #初期値のpublish
         self.publish_initial_pose(x, y, yaw)
-        return True, "lidar + ekf mode enabled"
+        return True
 
     async def change_lifecycle_state(self, transition_id):
         if not self.amcl_lifecycle_client.wait_for_service(timeout_sec=2.0):

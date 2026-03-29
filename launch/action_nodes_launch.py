@@ -77,11 +77,9 @@ def generate_launch_description():
         parameters=[odom_pure_pursuit_config_path],
     )
 
-    delayed_nodes = [oversteps_node, box_arm_node, spear_node]
-
-    delayed_launch_node = TimerAction(period=3.0, actions=delayed_nodes)
-
-    ld.add_action(delayed_launch_node)
+    ld.add_action(oversteps_node)
+    ld.add_action(box_arm_node)
+    ld.add_action(spear_node)
     ld.add_action(correcting_pos_node)
     ld.add_action(move_on_steps_node)
     ld.add_action(detect_aruco_action_node)

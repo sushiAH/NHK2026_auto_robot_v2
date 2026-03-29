@@ -18,6 +18,11 @@
     dynamixelとdcモーターを前方に進める
     決まった秒数が立ったら、車体を停止して、フレームを(10,-10) [mm]とする
     決まった秒数が立ったら終了
+
+mode 
+    1: 上り
+    2: 降り
+    3: そのまま移動
 　　
 """
 
@@ -43,15 +48,6 @@ from auto_robot_interfaces_v2.action import OverSteps
 from dyna_interfaces.msg import DynaFeedback, DynaTarget
 import os
 import sys
-
-target_dir = os.path.abspath("/home/aratahorie/ah_python_libraries")
-sys.path.append(target_dir)
-from ah_python_can import *
-
-CAN_BUS = can.interface.Bus(bustype="socketcan",
-                            channel="can0",
-                            asynchronous=True,
-                            bitrate=1000000)
 
 # ----Config Params -----
 TOF_THRESHOLD_CLIMB = 200  # (210 - 200 = 10) < 100[mm]
@@ -124,7 +120,6 @@ class OverStepsActionServer(Node):
         #dc_motor_twistの配信
         self.twist_publisher = self.create_publisher(Twist, "/cmd_vel", 10)
 
-        #内部変数の定義
         self.tof1 = 0
         self.tof2 = 0
         self.tof3 = 0
@@ -179,6 +174,8 @@ class OverStepsActionServer(Node):
             success = await self.climb_steps()
         elif req.mode == 2:
             success = await self.descend_steps()
+        elif req.mode == 3:
+            success = await self.just_move_steps()
 
         res.success = success
 
@@ -272,13 +269,21 @@ class OverStepsActionServer(Node):
         #前向きに直進する
         self.publish_twist(0.5, 0, 0)
         self.publish_dyna_twist(100)
-        time.sleep(2.0)
+        time.sleep(1.0)
 
         #車体を停止し、フレーム高さをもとに戻す
         self.publish_twist(0, 0, 0)
         self.publish_dyna_twist(0)
         self.publish_dyna_extpos(2, calc_frame_height(10))
         self.publish_dyna_extpos(3, calc_frame_height(-10))
+        time.sleep(2.0)
+
+        return True
+
+    async def just_move_steps(self):
+        self.get_logger().info("そのまま移動アクションを開始します。")
+
+        self.publish_twist(0.5, 0, 0)
         time.sleep(2.0)
 
         return True

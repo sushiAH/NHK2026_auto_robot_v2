@@ -2,7 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
-from rclpy.action import ActionServer
+from rclpy.action import ActionServer, ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
 from geometry_msgs.msg import PoseWithCovarianceStamped, Pose
 import time
@@ -57,7 +57,7 @@ class PoseCorrectionServer(Node):
         self.get_logger().info("自己位置を補正します")
         #下を向く
         self.publish_dyna_pos(10, self.spear_arm_pos_list[1])
-        time.sleep(2.0)
+        time.sleep(1.0)
 
         #初期化座標の取得
         msg = PoseWithCovarianceStamped()
@@ -80,7 +80,7 @@ class PoseCorrectionServer(Node):
 
         #座標の送信
         self.initial_pose_pub.publish(msg)
-        time.sleep(1.0)
+        time.sleep(0.5)
 
         #上を向く
         self.publish_dyna_pos(10, self.spear_arm_pos_list[0])

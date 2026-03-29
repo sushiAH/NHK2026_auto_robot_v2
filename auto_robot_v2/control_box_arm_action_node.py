@@ -12,7 +12,9 @@
     ボックスがおいてある段差が上か、下か
         置く動作、取る動作
 
-左から取る
+
+右から取る
+2個目は右から取る
 
 
 Vゴール
@@ -28,17 +30,27 @@ dynamixel_id
     9: 右先端
 
 
-モード一覧
-1 ボックス下:左:置く
-2 ボックス下:左:持ち上げ
-3 ボックス下:右:置く:
-4 ボックス下:右:持ち上げ
-5 ボックス上:左:置く
-6 ボックス上:左:持ち上げ
-7 ボックス上:右:置く
-8 ボックス上:右:持ち上げ
-9 Vゴール中段
-10 Vゴール上段
+mode 
+    1: ボックス下:左:置く
+    2: ボックス下:左:持ち上げ
+    3: ボックス下:右:置く:
+    4: ボックス下:右:持ち上げ
+
+    5: ボックス上:左:置く
+    6: ボックス上:左:持ち上げ
+    7: ボックス上:右:置く
+    8: ボックス上:右:持ち上げ
+
+    9: ボックス同じ:左:置く
+    10: ボックス同じ:左:持ち上げ
+    11: ボックス同じ:右:置く
+    12: ボックス同じ:右:持ち上げ
+
+    13: ボックス破棄:右
+    14: ボックス破棄:左
+
+    15: Vゴール中段
+    16: Vゴール上段
 """
 
 import rclpy
@@ -107,12 +119,13 @@ class BoxArmController(Node):
 
         #初期化
         left_init_pos_list = [3000, 980, 1060]
-        right_init_pos_list = [1900, 3600, 3000]
+        right_init_pos_list = [1200, 3600, 3000]
 
         #left
         self.publish_dyna_pos(self.left_box_arm_ids[0], left_init_pos_list[0])
         self.publish_dyna_pos(self.left_box_arm_ids[1], left_init_pos_list[1])
         self.publish_dyna_pos(self.left_box_arm_ids[2], left_init_pos_list[2])
+
         #right
         self.publish_dyna_pos(self.right_box_arm_ids[0], right_init_pos_list[0])
         self.publish_dyna_pos(self.right_box_arm_ids[1], right_init_pos_list[1])
@@ -123,7 +136,7 @@ class BoxArmController(Node):
         #ボックスが上にあるときの位置リスト
         self.left_lift_above_pos_list = [1000, 3000, 1200, 3000, 980, 1800]
         self.left_put_above_pos_list = [0, 0, 0, 0, 0, 0]
-        self.right_lift_above_pos_list = [3000, 3200, 2800, 1900, 3600, 2000]
+        self.right_lift_above_pos_list = [2700, 3200, 2800, 1200, 3600, 2000]
         self.right_put_above_pos_list = [0, 0, 0, 0, 0, 0]
 
         # ボックスが下にあるときの位置リスト
@@ -131,6 +144,16 @@ class BoxArmController(Node):
         self.left_put_under_pos_list = [0, 0, 0, 0, 0, 0]  #左置く
         self.right_lift_under_pos_list = [0, 0, 0, 0, 0, 0]  #右持ち上げ
         self.right_put_under_pos_list = [0, 0, 0, 0, 0, 0]  #右置く
+
+        # ボックスが同じ高さにあるときの位置リスト
+        self.left_lift_same_pos_list = [0, 0, 0, 0, 0, 0]  #左持ち上げ
+        self.left_put_same_pos_list = [0, 0, 0, 0, 0, 0]  #左置く
+        self.right_lift_same_pos_list = [0, 0, 0, 0, 0, 0]  #右持ち上げ
+        self.right_put_same_pos_list = [0, 0, 0, 0, 0, 0]  #右置く
+
+        #ボックス破棄の位置リスト
+        self.left_destruct_pos_list = [0, 0, 0, 0, 0, 0]
+        self.right_destruct_pos_list = [0, 0, 0, 0, 0, 0]
 
         #Vゴール時
         self.vgoal_middle_pos_list = [0, 0, 0, 0, 0, 0]
@@ -174,11 +197,31 @@ class BoxArmController(Node):
         elif req.mode == 8:  #右置く
             success = await self.put_box(self.right_box_arm_ids,
                                          self.right_put_under_pos_list)
+        #ボックスそのまま
+        elif req.mode == 8:
+            success = await self.lift_box(self.left_box_arm_ids,
+                                          self.left_lift_same_pos_list)
+        elif req.mode == 9:
+            success = await self.put_box(self.left_box_arm_ids,
+                                         self.left_put_same_pos_list)
+        elif req.mode == 10:
+            success = await self.lift_box(self.right_box_arm_ids,
+                                          self.right_lift_same_pos_list)
+        elif req.mode == 11:
+            success = await self.put_box(self.right_box_arm_ids,
+                                         self.right_put_same_pos_list)
+        #ボックス破棄
+        elif req.mode == 12:
+            success = await self.destruct_box(self.left_box_arm_ids,
+                                              self.left_destruction_pos_list)
+        elif req.mode == 13:
+            success = await self.destruct_box(self.right_box_arm_ids,
+                                              self.right_destruction_pos_list)
         #Vゴール
-        elif req.mode == 9:  #vgoal　中段 右
+        elif req.mode == 14:  #vgoal　中段 右
             success = await self.v_goal(self.right_box_arm_ids,
                                         self.vgoal_middle_pos_list)
-        elif req.mode == 10:  #vgoal 上段 左
+        elif req.mode == 15:  #vgoal 上段 左
             success = await self.v_goal(self.left_box_arm_ids,
                                         self.vgoal_above_pos_list)
         res.success = success
@@ -224,6 +267,23 @@ class BoxArmController(Node):
         self.publish_dyna_pos(ids[1], pos_list[4])
         self.publish_dyna_pos(ids[2], pos_list[5])
         time.sleep(2.0)
+
+        self.get_logger().info("動作終了、待機します")
+        return True
+
+    async def destruct_box(self, ids, pos_list):
+        self.get_logger().info("破棄動作を開始します")
+
+        self.publish_dyna_pos(ids[0], pos_list[0])
+        self.publish_dyna_pos(ids[1], pos_list[1])
+        self.publish_dyna_pos(ids[2], pos_list[2])
+        time.sleep(4.0)
+
+        set_goal_pwm(ids[3], 0, CAN_BUS)
+        self.publish_dyna_pos(ids[0], pos_list[3])
+        self.publish_dyna_pos(ids[1], pos_list[4])
+        self.publish_dyna_pos(ids[2], pos_list[5])
+        time.sleep(4.0)
 
         self.get_logger().info("動作終了、待機します")
         return True

@@ -3,28 +3,20 @@ pure_pursuit_odom:
     global_frame: "odom"
     robot_frame: "base_link"
     action_name: "follow_path_odom"
-    # --- 追従コア設定 ---
-    # 注視距離：大きいと滑らかになり、小さいと経路に忠実になります（0.4〜0.6推奨）
-    lookahead_dist: 0.4
 
-    # --- 速度制限設定 ---
-    # 最大並進速度 (m/s)
-    max_linear_vel: 1.5
-    # 最大旋回速度 (rad/s)
-    max_angular_vel: 1.0
-    # 加速度制限 (m/s^2)：メカナムの空転を防ぐため、最初は低め(0.5前後)を推奨
+    max_linear_vel: 5.0
     accel_limit: 1.0
 
-    # --- 制御ゲイン (P制御) ---
-    # 並進ゲイン：目標点へ向かう勢い。上げすぎるとハンチング（振動）します
-    kp_linear: 3.0
-    # 旋回ゲイン：機体の向きを修正する勢い
+    min_lookahead_dist: 0.2
+    lookahead_gain: 0.2
+
+    max_angular_vel: 2.0
     kp_yaw: 2.0
 
-    # --- 到着判定 ---
-    # ゴール許容誤差 (m)：AMCLの精度に合わせて調整（5cm〜10cm程度が一般的）
     goal_tolerance: 0.05
 
+    v_start_min: 0.4
+    decel_start_dist: 0.4
     control_frequency: 20.0
 
     # --- その他設定（必要に応じてプログラム側で追加・利用可能） ---

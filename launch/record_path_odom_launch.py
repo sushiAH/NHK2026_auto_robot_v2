@@ -40,7 +40,7 @@ def generate_launch_description():
         package="auto_robot_v2",
         executable="record_path_node",
         parameters=[{
-            "global_frame": "map",
+            "global_frame": "odom",
         }],
     )
 
@@ -68,7 +68,7 @@ def generate_launch_description():
         parameters=[{
             "autostart": True,
             "node_names": ["map_server", "amcl"],
-            "bond_timeout": 4.0,
+            "bond_timeout": 0.0,
         }],
     )
 

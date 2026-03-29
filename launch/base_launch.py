@@ -17,9 +17,6 @@ def generate_launch_description():
     # ---- Params ----
     ekf_config_file_path = os.path.join(package_dir, "config", "ekf.yaml")
 
-    dyna_config_file_path = os.path.join(package_dir, "config",
-                                         "dyna_params.yaml")
-
     # ノード定義
     sub_twist_node = Node(
         package="auto_robot_v2",
@@ -43,13 +40,6 @@ def generate_launch_description():
         parameters=[ekf_config_file_path],
     )
 
-    dyna_node = Node(
-        package="ah_ros2_dynamixel",
-        executable="dyna_handler_sync_node",
-        parameters=[dyna_config_file_path],
-    )
-
-    ld.add_action(dyna_node)
     ld.add_action(sub_twist_node)
     ld.add_action(pub_feedback_node)
     ld.add_action(ekf_node)
