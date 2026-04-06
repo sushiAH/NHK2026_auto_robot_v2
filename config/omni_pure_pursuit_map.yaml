@@ -5,17 +5,19 @@ pure_pursuit_map:
     action_name: "follow_path_map"
 
     max_linear_vel: 4.0
-    accel_limit: 4.0
+    accel_limit: 7.0
 
-    min_lookahead_dist: 0.2
-    lookahead_gain: 0.2
+    min_lookahead_dist: 0.5
+    lookahead_gain: 0.3
 
-    max_angular_vel: 1.0
+    max_angular_vel: 4.0
     kp_yaw: 2.0
 
     goal_tolerance: 0.05
+    yaw_tolerance: 0.05
+    min_vel_enforce_dist: 0.15
 
-    v_start_min: 1.5
+    v_start_min: 1.0
     decel_start_dist: 0.4
     control_frequency: 20.0
 

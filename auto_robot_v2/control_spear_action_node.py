@@ -74,9 +74,9 @@ class SpearController(Node):
                                                         "/dyna_target_pos", 10)
 
         #----Params----
-        self.spear_arm_pos_list = [1674, 2660]  #上、下
+        self.spear_arm_pos_list = [2430, 3450]  #上、下
         self.spear_hand_pos_list = [1440, 350]  #開く、閉じる
-        self.spear_frame_height = 210
+        self.spear_frame_height = 100
 
         #やりハンド初期化
         self.publish_dyna_pos(10, self.spear_arm_pos_list[0])
@@ -109,7 +109,7 @@ class SpearController(Node):
         req = goal_handle.request
         res = Spear.Result()
         success = False
-        success = await self.spaer()
+        success = await self.spear()
 
         res.success = success
 
@@ -124,8 +124,8 @@ class SpearController(Node):
         self.get_logger().info("やり取得動作を開始します。")
 
         #フレームを上げる&やりハンドを正面に
-        self.publish_dyna_extpos(2, calc_frame_height(-spear_frame_height))
-        self.publish_dyna_extpos(3, calc_frame_height(spear_frame_height))
+        self.publish_dyna_extpos(2, calc_frame_height(-self.spear_frame_height))
+        self.publish_dyna_extpos(3, calc_frame_height(self.spear_frame_height))
         self.publish_dyna_pos(10, self.spear_arm_pos_list[1])  #下
         self.publish_dyna_pos(11, self.spear_hand_pos_list[0])  #開
         time.sleep(4.0)
@@ -134,7 +134,8 @@ class SpearController(Node):
         self.publish_dyna_twist(100)
         time.sleep(1.0)
 
-        #やりハンドで掴む
+        #停止＆やりハンドで掴む
+        self.publish_dyna_twist(0)
         self.publish_dyna_pos(11, self.spear_hand_pos_list[1])  #閉
         time.sleep(1.0)
 
@@ -146,12 +147,16 @@ class SpearController(Node):
         self.publish_dyna_twist(-100)
         time.sleep(1.0)
 
-        #フレームを下げる＆ハンド開く
+        #停止＆フレームを下げる＆ハンド開く
+        self.publish_dyna_twist(0)
         self.publish_dyna_extpos(2, calc_frame_height(10))
         self.publish_dyna_extpos(3, calc_frame_height(-10))
         self.publish_dyna_pos(11, self.spear_arm_pos_list[0])  #開
+        time.sleep(3.0)
 
         self.get_logger().info("やり取得動作を終了しました。待機します。")
+
+        return True
 
 
 def main(args=None):

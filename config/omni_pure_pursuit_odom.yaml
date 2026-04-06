@@ -14,6 +14,8 @@ pure_pursuit_odom:
     kp_yaw: 2.0
 
     goal_tolerance: 0.05
+    yaw_tolerance: 0.03
+    min_vel_enforce_dist: 0.15 #この距離までは、減速範囲内でも最低速度は維持する
 
     v_start_min: 0.4
     decel_start_dist: 0.4

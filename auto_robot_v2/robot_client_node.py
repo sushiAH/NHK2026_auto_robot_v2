@@ -13,8 +13,10 @@
 """
 
 import os
+import sys
 import csv
 import math
+import asyncio
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
@@ -28,6 +30,11 @@ from auto_robot_interfaces_v2.action import (OverSteps, BoxArm, PoseCorrection,
 from nav_msgs.msg import Path
 from nav2_msgs.action import FollowPath
 from geometry_msgs.msg import PoseStamped
+
+target_dir = os.path.abspath("/home/aratahorie/ah_python_libraries")
+sys.path.append(target_dir)
+from route_searcher import *
+from voice_box_lib import *
 
 
 class RobotActionClient(Node):
@@ -70,9 +77,71 @@ class RobotActionClient(Node):
         self.path_pub = self.create_publisher(Path, "/visual_spline_path", 10)
 
         # 経路データの読み込み
-        self.start_to_steps = self.load_path_from_csv(
-            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/start_to_steps.csv"
+        self.start_to_before_spear = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/start_to_before_spear.csv"
         )
+
+        self.spear_to_aruco_wait = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/spear_to_aruco_wait.csv"
+        )
+
+        self.aruco_wait_to_before_steps = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/aruco_wait_to_before_steps.csv"
+        )
+
+        self.before_to_step_0 = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/before_to_step_0.csv"
+        )
+
+        self.before_to_step_1 = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/before_to_step_1.csv"
+        )
+
+        self.before_to_step_2 = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/before_to_step_2.csv"
+        )
+
+        self.step_0_to_rightside = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/step_0_to_rightside.csv"
+        )
+
+        self.step_1_to_rightside = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/step_1_to_rightside.csv"
+        )
+
+        self.step_2_to_rightside = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/step_2_to_rightside.csv"
+        )
+
+        self.step_0_to_after = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/step_0_to_after.csv"
+        )
+
+        self.step_1_to_after = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/step_1_to_after.csv"
+        )
+
+        self.step_2_to_after = self.load_path_from_csv(
+            "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/path/step_2_to_after.csv"
+        )
+
+        self.map_path = "/home/aratahorie/NHK2026_auto_robot_v2/src/auto_robot_v2/map/c419_map.yaml"
+
+        # ----Params----
+        self.items = [
+            [1, 0, 1],
+            [0, 1, 2],
+            [0, 0, 1],
+            [0, 0, 0],
+        ]
+
+        self.spear_init_pos = [0.98, -0.71, -1.65]
+        self.aruco_init_pos = [1.00, -0.65, 1.622]
+        self.step_0_init_pos = [0, 0, 0]
+        self.step_1_init_pos = [0, 0, 0]
+        self.step_2_init_pos = [0, 0, 0]
+
+        #初期化
 
     def load_path_from_csv(self, file_path):
         """CSVからPathメッセージを生成"""
@@ -366,74 +435,111 @@ class RobotActionClient(Node):
         elif num == 25:
             #0列目侵入、取得あり
             #高さ1
-            await self.send_goal()
+            await self.send_goal(self.before_to_step_0)
             await self.send_to_boxarm(8)
-            await self.send_goal()
+            await self.send_goal(self.step_0_to_rightside)
             await self.send_to_switch_loc(1)
             await self.send_to_oversteps(1)
         elif num == 26:
             #1列目侵入、取得あり
             #高さ0
-            await self.send_goal()
+            await self.send_goal(self.before_to_step_1)
             await self.send_to_boxarm(12)
-            await self.send_goal()
+            await self.send_goal(self.step_1_to_rightside)
             await self.send_to_switch_loc(1)
             await self.send_to_oversteps(3)
         elif num == 27:
             #2列目侵入、取得あり
             #高さ1
-            await self.send_goal()
+            await self.send_goal(self.before_to_step_2)
             await self.send_to_boxarm(8)
-            await self.send_goal()
+            await self.send_goal(self.step_2_to_rightside)
             await self.send_to_switch_loc(1)
             await self.send_to_oversteps(1)
         elif num == 28:
             #0列目侵入、取得なし
-            await self.send_goal()
+            await self.send_goal(self.before_to_step_0)
+            await self.send_goal(self.step_0_to_rightside)
             await self.send_to_switch_loc(1)
             await self.send_to_oversteps(1)
         elif num == 29:
             #1列目侵入、取得なし
-            await self.send_goal()
+            await self.send_goal(self.before_to_step_1)
+            await self.send_goal(self.step_1_to_rightside)
             await self.send_to_switch_loc(1)
             await self.send_to_oversteps(3)
         elif num == 30:
             #2列目侵入、取得なし
-            await self.send_goal()
+            await self.send_goal(self.before_to_step_2)
+            await self.send_goal(self.step_2_to_rightside)
             await self.send_to_switch_loc(1)
             await self.send_to_oversteps(1)
         elif num == 31:
             #退出地点移動、0列目
-            await self.send_to_switch_loc(2)
+            await self.send_to_switch_loc(2, self.step_0_init_pos[0],
+                                          self.step_0_init_pos[1],
+                                          self.step_0_init_pos[2],
+                                          self.map_path)
             await self.send_goal()
         elif num == 32:
             #退出地点移動、1列目
-            await self.send_to_switch_loc(2)
+            await self.send_to_switch_loc(2, self.step_1_init_pos[0],
+                                          self.step_1_init_pos[1],
+                                          self.step_1_init_pos[2],
+                                          self.map_path)
             await self.send_goal()
         elif num == 33:
             #退出地点移動、2列目
-            await self.send_to_switch_loc(2)
+            await self.send_to_switch_loc(2, self.step_2_init_pos[0],
+                                          self.step_2_init_pos[1],
+                                          self.step_2_init_pos[2],
+                                          self.map_path)
             await self.send_goal()
-
-        return None
 
     # --- メインシーケンス ---
     async def run_robot_sequence(self):
         self.get_logger().info("--- ロボットシーケンス開始 ---")
+        #speak("ロボットを起動します")
+        #await self.send_to_correctpos()
 
-        await self.send_goal(self.start_to_steps)
+        #やり取得シークエンス
+        await self.send_goal(self.start_to_before_spear)  #スタートからやり
+        await self.send_to_switch_loc(1)  #amcl無効化
+        await self.send_to_spear()  #やり取得
+        await self.send_to_switch_loc(
+            2,
+            self.spear_init_pos[0],  #amcl有効化
+            self.spear_init_pos[1],
+            self.spear_init_pos[2],
+            self.map_path)
 
-        await self.send_to_switch_loc(1)
+        await self.send_goal(self.spear_to_aruco_wait)
+        await self.send_to_switch_loc(1)  #amcl無効化
+        await self.send_to_detect_aruco()  #aruco検出待ち
+        await self.send_to_switch_loc(
+            2,
+            self.aruco_init_pos[0],  #amcl有効化
+            self.aruco_init_pos[1],
+            self.aruco_init_pos[2],
+            self.map_path)
+        await self.send_goal(self.aruco_wait_to_before_steps)
 
-        await self.send_to_oversteps(1)
+        #段差超え(テスト)
+        #await self.send_goal(self.spear_to_before_steps) #槍から段差前まで
+        await self.steps_action_pattern(28)  #スタート、段差超え
+        await self.steps_action_pattern(24)  #位置確認、真ん中移動
 
-        await self.send_to_correctpos()
+        #段差超えシークエンス(本番)
+        #await self.send_goal()  #グリッドの前に移動
+        #route = calc_on_step_sequence(self.items)
+        #for i in range(0, len(route)):
+        #    await self.steps_action_pattern(route[i])
 
-        # 4. 段差上の移動
-        await self.send_to_move_on_steps(2)
-
-        # 6. 段差おり
-        await self.send_to_oversteps(2)
+        #Vゴールシークエンス
+        #await self.send_goal()  #棚の前まで移動
+        #await self.send_to_boxarm(15)  #中段を入れる
+        #await self.send_to_is_vgoal()  #高さ待ち
+        #await self.send_to_boxarm(16)  #中段を入れる
 
         self.get_logger().info("--- 全シーケンス正常終了 ---")
 
@@ -449,7 +555,7 @@ def main(args=None):
 
     # シーケンスをバックグラウンドタスクとして作成
     # これにより spin() を実行しながらシーケンスを並行して進める
-    sequence_task = executor.create_task(node.run_robot_sequence())
+    sequence_task = executor.create_task(node.run_robot_sequence)
 
     try:
         executor.spin()

@@ -44,7 +44,7 @@ class PoseCorrectionServer(Node):
                                                         "/dyna_target_pos", 10)
 
         #----Params----
-        self.spear_arm_pos_list = [1674, 2660]  #上、下
+        self.spear_arm_pos_list = [2430, 3450]  #上、下
         self.spear_hand_pos_list = [1440, 350]  #開く、閉じる
 
     def publish_dyna_pos(self, id, target):
@@ -57,7 +57,7 @@ class PoseCorrectionServer(Node):
         self.get_logger().info("自己位置を補正します")
         #下を向く
         self.publish_dyna_pos(10, self.spear_arm_pos_list[1])
-        time.sleep(1.0)
+        time.sleep(1)
 
         #初期化座標の取得
         msg = PoseWithCovarianceStamped()
@@ -80,7 +80,7 @@ class PoseCorrectionServer(Node):
 
         #座標の送信
         self.initial_pose_pub.publish(msg)
-        time.sleep(0.5)
+        time.sleep(0.1)
 
         #上を向く
         self.publish_dyna_pos(10, self.spear_arm_pos_list[0])

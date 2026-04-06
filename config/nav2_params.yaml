@@ -11,8 +11,8 @@ amcl:
     # --- 初期姿勢 ---
     set_initial_pose: true
     initial_pose:
-      x: 0.045
-      y: 0.119
+      x: 0.0826
+      y: 0.04423
       z: 0.0
       yaw: 0.0
 

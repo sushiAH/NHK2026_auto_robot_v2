@@ -191,16 +191,16 @@ class OverStepsActionServer(Node):
 
         #フレーム上昇
         self.get_logger().info("フレーム上昇")
-        self.publish_dyna_extpos(2, calc_frame_height(-300))
-        self.publish_dyna_extpos(3, calc_frame_height(300))
+        self.publish_dyna_extpos(2, calc_frame_height(-290))
+        self.publish_dyna_extpos(3, calc_frame_height(290))
         time.sleep(4.0)
 
         #dynamixel前進
         self.publish_dyna_twist(100)
-
         #段差検知待ち
+
         while self.tof1 >= TOF_THRESHOLD_CLIMB:
-            time.sleep(0.1)
+            time.sleep(0.01)
 
         #停止して前方足上げ
         self.publish_dyna_twist(0)
@@ -211,7 +211,7 @@ class OverStepsActionServer(Node):
         self.publish_dyna_twist(100)
         self.publish_twist(0.5, 0, 0)
         while (self.tof3 >= TOF_THRESHOLD_CLIMB):
-            time.sleep(0.1)
+            time.sleep(0.01)
 
         #停止して後方足上げ
         self.publish_dyna_twist(0)
@@ -239,12 +239,12 @@ class OverStepsActionServer(Node):
         time.sleep(1.0)
 
         #前進
-        self.publish_twist(0.5, 0, 0)
-        self.publish_dyna_twist(100)
+        self.publish_twist(1.0, 0, 0)
+        self.publish_dyna_twist(150)
 
         #tof2検知待ち
         while (self.tof2 <= TOF_THRESHOLD_DESCEND):
-            time.sleep(0.1)
+            time.sleep(0.01)
 
         #車体を止めて、前方の足を下げる
         self.publish_dyna_twist(0)
@@ -253,12 +253,12 @@ class OverStepsActionServer(Node):
         time.sleep(4.0)
 
         #dcモーターを前方に動かす
-        self.publish_twist(0.5, 0, 0)
-        self.publish_dyna_twist(100)
+        self.publish_twist(1.0, 0, 0)
+        self.publish_dyna_twist(150)
 
         #tof4検知待ち
         while (self.tof4 <= TOF_THRESHOLD_DESCEND):
-            time.sleep(0.1)
+            time.sleep(0.01)
 
         #車体を止めて、後方の足を下げる
         self.publish_twist(0, 0, 0)
@@ -267,9 +267,9 @@ class OverStepsActionServer(Node):
         time.sleep(4.0)
 
         #前向きに直進する
-        self.publish_twist(0.5, 0, 0)
-        self.publish_dyna_twist(100)
-        time.sleep(1.0)
+        self.publish_twist(1.0, 0, 0)
+        self.publish_dyna_twist(150)
+        time.sleep(1.5)
 
         #車体を停止し、フレーム高さをもとに戻す
         self.publish_twist(0, 0, 0)
@@ -283,7 +283,7 @@ class OverStepsActionServer(Node):
     async def just_move_steps(self):
         self.get_logger().info("そのまま移動アクションを開始します。")
 
-        self.publish_twist(0.5, 0, 0)
+        self.publish_twist(1.0, 0, 0)
         time.sleep(2.0)
 
         return True

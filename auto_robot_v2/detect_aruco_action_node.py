@@ -14,6 +14,7 @@ import atexit
 import asyncio
 from rclpy.action import ActionServer, CancelResponse
 from rclpy.callback_groups import ReentrantCallbackGroup
+from dyna_interfaces.msg import DynaFeedback, DynaTarget
 
 #自作ライブラリ
 from auto_robot_interfaces_v2.action import DetectAruco
@@ -43,6 +44,17 @@ class DetectArucoController(Node):
 
         self.marker_id = 1
 
+        self.dyna_extpos_publisher = self.create_publisher(
+            DynaTarget, "/dyna_target_extpos", 10)
+
+        self.spear_frame_height = 80
+
+    def publish_dyna_extpos(self, id, target):
+        msg = DynaTarget()
+        msg.id = id
+        msg.target = target
+        self.dyna_extpos_publisher.publish(msg)
+
     # ---- Action実行メインロジック
     async def execute_callback(self, goal_handle):
         self.get_logger().info("arucoマーカーを検出します")
@@ -59,6 +71,7 @@ class DetectArucoController(Node):
             goal_handle.succeed()
         else:
             goal_handle.abort()
+        self.get_logger().info("検出しました。。待機します。")
 
         return res
 
